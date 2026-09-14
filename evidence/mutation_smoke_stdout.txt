@@ -42,4 +42,3 @@
   ],
   "note": "Mutations are applied only in temporary copies and are never committed to release source."
 }
-

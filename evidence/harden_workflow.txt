@@ -1,2 +1,1 @@
-hardened 48 nodes -> /mnt/data/codex_localle_review/unpacked/localle_reservation_intake_final/n8n/localle_reservation_intake_v1.n8n.json
-
+hardened 48 nodes -> /Volumes/CORSAIR/Workspace/Projects/localle_reservation_intake_final/n8n/localle_reservation_intake_v1.n8n.json

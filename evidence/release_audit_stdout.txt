@@ -9,4 +9,3 @@
   "sheet_contracts_checked": true,
   "final_alias_identical": true
 }
-

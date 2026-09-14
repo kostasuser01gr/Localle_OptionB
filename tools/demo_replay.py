@@ -27,7 +27,7 @@ def x_identity_followup(_):
     return x
 
 def x_german_complete(_):
-    return base_extraction(
+    x=base_extraction(
         language='de',customer_name='Anna Keller',phone='+49 170 5551234',email='anna@example.de',
         pickup={'date_text':'5 August','date_iso':None,'time_text':None,'location':'Kos Airport'},
         vehicle={'category':'small','transmission':'automatic','model_text':None},confidence=.98
@@ -36,7 +36,7 @@ def x_german_complete(_):
     return x
 
 def x_competitor(_):
-    return base_extraction(
+    x=base_extraction(
         language='fr',customer_name='Jean Dupont',phone='+33 612345678',email='jean@example.fr',
         pickup={'date_text':'3 September','date_iso':None,'time_text':None,'location':'Kos Airport'},
         competitor={'price_mentioned':True,'price_text':'8 € par jour'},confidence=.98
@@ -45,7 +45,7 @@ def x_competitor(_):
     return x
 
 def x_ambiguous(_):
-    return base_extraction(
+    x=base_extraction(
         customer_name='Chris',phone='+44 7700 900111',
         pickup={'date_text':'03/04','date_iso':None,'time_text':None,'location':'Kos Airport'},
         vehicle={'category':'small','transmission':'automatic','model_text':None},confidence=.98

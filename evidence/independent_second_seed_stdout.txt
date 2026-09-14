@@ -59,4 +59,3 @@
   },
   "synthetic_note": "Second independent random-seed run; probability rates are synthetic, not observed production metrics."
 }
-

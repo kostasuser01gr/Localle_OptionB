@@ -22,4 +22,3 @@
   },
   "note": "Synthetic stress tests validate invariants; they are not observed Localle production probabilities."
 }
-

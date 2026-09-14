@@ -2,7 +2,7 @@
   "name": "Localle — AI Reservation Intake v2.0 FINAL (SAFE DEFAULT)",
   "nodes": [
     {
-      "id": "b26210dc-f100-496a-898e-4f958f0ed876",
+      "id": "8ff76e94-bfa4-48a6-9954-5694393308f4",
       "name": "00 — Safety & scope",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -18,7 +18,7 @@
       }
     },
     {
-      "id": "9b2b8394-6ae7-4942-9c7d-3ff60c1a3579",
+      "id": "05ebf479-70c9-442c-a9c0-aac0d148d467",
       "name": "Gmail Trigger",
       "type": "n8n-nodes-base.gmailTrigger",
       "typeVersion": 1.4,
@@ -49,7 +49,7 @@
       }
     },
     {
-      "id": "be0278e9-b8af-464d-a205-a4dde159c1b2",
+      "id": "1f50b972-b007-4611-bb3a-904a457d1c92",
       "name": "Normalize Inbound",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -62,7 +62,7 @@
       }
     },
     {
-      "id": "ee8b7830-babc-4629-94db-e627dcca17ac",
+      "id": "80d1ed95-1c42-4c6d-bc6c-281c1135a113",
       "name": "Should Process?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
@@ -80,7 +80,7 @@
           },
           "conditions": [
             {
-              "id": "06635237-418a-4af9-9514-fc92ddbe5cca",
+              "id": "b0abf4c6-eb15-4d12-b197-eb7e7e5cb4a8",
               "leftValue": "={{ $json.disposition }}",
               "rightValue": "PROCESS",
               "operator": {
@@ -95,7 +95,7 @@
       }
     },
     {
-      "id": "ac4037ee-9e82-4d3a-b06e-700295f9b6c5",
+      "id": "b50cf078-431f-4027-9ece-fc2a697003d3",
       "name": "Log Ignored Event",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -232,7 +232,7 @@
       }
     },
     {
-      "id": "7783c38b-fbc8-4226-98ba-31c36e4a06d0",
+      "id": "f623573a-15c2-4e53-88ea-e7cf666539c3",
       "name": "Mark Ignored Read",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
@@ -246,7 +246,7 @@
       }
     },
     {
-      "id": "aaa65d0d-9317-42b9-989b-f446396d3e17",
+      "id": "24a36b4d-a5ab-455b-81a2-69461217ae87",
       "name": "Lookup Processed Message",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -284,7 +284,7 @@
       "alwaysOutputData": true
     },
     {
-      "id": "9cdfb81a-0fce-4cf3-80df-4e47626bcb53",
+      "id": "9d161507-5fd1-4c95-8806-67792056303c",
       "name": "Duplicate / Recovery Gate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -297,7 +297,7 @@
       }
     },
     {
-      "id": "9be5b710-a64c-4129-8377-44dce010cfe9",
+      "id": "181634c5-a6bc-4c86-a510-7d8c9597d370",
       "name": "Already Processed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
@@ -315,7 +315,7 @@
           },
           "conditions": [
             {
-              "id": "d2ca0edd-8d97-43f2-9d59-1bfeb31380d0",
+              "id": "31a3805b-8774-4d99-b859-0781a314a66f",
               "leftValue": "={{ $json.is_duplicate }}",
               "rightValue": true,
               "operator": {
@@ -331,7 +331,7 @@
       }
     },
     {
-      "id": "bdee03c8-7955-4aff-a35b-2c8704892d96",
+      "id": "805532a8-4430-497f-b7ab-16949f349fa7",
       "name": "Was Reply Confirmed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
@@ -349,7 +349,7 @@
           },
           "conditions": [
             {
-              "id": "37277b24-14bd-4328-8095-39ed4fd9e064",
+              "id": "33f9bc39-beb2-44bd-b505-11a49fefbcc6",
               "leftValue": "={{ $json.prior_reply_sent }}",
               "rightValue": true,
               "operator": {
@@ -365,7 +365,7 @@
       }
     },
     {
-      "id": "8b2b0a73-3250-48ec-9ec2-42a3439a44a4",
+      "id": "426828dd-7bc3-449f-94b9-b99491294715",
       "name": "Mark Duplicate Read",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
@@ -379,7 +379,7 @@
       }
     },
     {
-      "id": "233af2f1-1dd9-4327-a56f-b02fdab839b8",
+      "id": "cf93bde1-749d-46ef-9677-a7b90e2f2335",
       "name": "Build Recovery Review",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -392,7 +392,7 @@
       }
     },
     {
-      "id": "e41e551a-6120-49c1-ba15-3fca27152154",
+      "id": "3cf31535-13d8-4cd8-b7ae-7b018873c951",
       "name": "Upsert Recovery Review",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -564,7 +564,7 @@
       }
     },
     {
-      "id": "08d2d486-3522-4281-88cd-dfce02dd6dec",
+      "id": "f10f5072-3bf4-4bbf-a1a2-12770212bdc8",
       "name": "Mark Recovery Read",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
@@ -578,7 +578,7 @@
       }
     },
     {
-      "id": "bf8e26ce-e2dc-470f-ba0b-9864a38f1776",
+      "id": "d84fa090-396e-4209-8a3a-d216a985bbe6",
       "name": "Lookup Request by Thread",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -616,7 +616,7 @@
       "alwaysOutputData": true
     },
     {
-      "id": "57f9d8b7-4946-4183-a501-930c7386b751",
+      "id": "43dec498-4d57-4bcf-81db-1193e375acf8",
       "name": "Extract Reservation",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.9,
@@ -644,7 +644,7 @@
       "onError": "continueErrorOutput"
     },
     {
-      "id": "0c2022b7-81bf-4c4a-aeea-8552a300e40d",
+      "id": "40f3712f-7e6e-47e2-9c5c-6c1fefcf8607",
       "name": "Extraction Model",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.3,
@@ -664,7 +664,7 @@
       }
     },
     {
-      "id": "95e82e31-b734-4131-91fb-a9de7cf840e7",
+      "id": "258b8646-5add-47d4-a6b2-2f443f943c8c",
       "name": "Strict Extraction Schema",
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
@@ -679,7 +679,7 @@
       }
     },
     {
-      "id": "a3b3f6a0-1ccd-491e-a8aa-905592913348",
+      "id": "8a096f2a-fb3e-4c43-85d8-e0248e902cbe",
       "name": "Merge + Validate + Decide",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -692,7 +692,7 @@
       }
     },
     {
-      "id": "b940c279-1a3c-4fb1-9fad-e0f0d48aae06",
+      "id": "9929a717-44fb-4603-abf1-501d592df77c",
       "name": "UPSERT Request",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -1131,7 +1131,7 @@
       "waitBetweenTries": 2000
     },
     {
-      "id": "5ec9aced-a1e2-4cd5-8c42-3af111e5e9b4",
+      "id": "868620b7-6ff2-4adb-8c28-bce9206518a7",
       "name": "Render Customer Reply",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.9,
@@ -1159,7 +1159,7 @@
       "onError": "continueErrorOutput"
     },
     {
-      "id": "59f4ee35-e739-4556-aef7-e9b536e5d9a4",
+      "id": "97a664dc-8b14-4362-b3b8-ae45b2d6e07a",
       "name": "Reply Model",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.3,
@@ -1179,7 +1179,7 @@
       }
     },
     {
-      "id": "fb023bea-8e78-483f-b4d9-1d8904f30071",
+      "id": "1511e95e-0ae1-4c44-8b0f-6add3e3cf019",
       "name": "Attach Reply + Send Gate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1192,7 +1192,7 @@
       }
     },
     {
-      "id": "7a9ab859-3b99-41f6-b671-29393f1f84be",
+      "id": "48730531-ddeb-4dc9-8675-95ed472585f7",
       "name": "Persist Event Ledger",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -1334,7 +1334,7 @@
       "waitBetweenTries": 2000
     },
     {
-      "id": "106ae194-71f8-4a27-8178-d8dbe39b9745",
+      "id": "feb4e3d9-8ae7-432b-962f-50a0f765a96d",
       "name": "Needs Human Review?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
@@ -1352,7 +1352,7 @@
           },
           "conditions": [
             {
-              "id": "5fbedbd6-e6ed-4701-9d91-c3093b766f01",
+              "id": "a5a6f1c4-feb5-4cae-aee7-80d715472cdc",
               "leftValue": "={{ $('Attach Reply + Send Gate').item.json.review_required }}",
               "rightValue": true,
               "operator": {
@@ -1368,7 +1368,7 @@
       }
     },
     {
-      "id": "eee7ea4f-1f78-4cdc-94f2-7379849ff561",
+      "id": "83a371f2-41c2-41c8-8ead-88f18c15e041",
       "name": "UPSERT Human Review",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -1540,7 +1540,7 @@
       }
     },
     {
-      "id": "6a9a2d59-d1d6-4fde-914a-79bd16022f5b",
+      "id": "3651f03b-685e-49a2-a9e5-c74b0df9bdba",
       "name": "AUTO SEND enabled + safe?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
@@ -1558,7 +1558,7 @@
           },
           "conditions": [
             {
-              "id": "bf8a515e-8ba8-477b-a00b-5c259a28f120",
+              "id": "8c21bbb7-7f6a-4e76-9e8b-f98a663012aa",
               "leftValue": "={{ $('Attach Reply + Send Gate').item.json.send_now }}",
               "rightValue": true,
               "operator": {
@@ -1574,7 +1574,7 @@
       }
     },
     {
-      "id": "97ac3634-058d-4ffb-838e-7eecaf08d0ab",
+      "id": "4216e525-dba7-4fdf-8947-ab6c4410f1c4",
       "name": "Reply in Same Gmail Thread",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
@@ -1596,7 +1596,7 @@
       "onError": "continueErrorOutput"
     },
     {
-      "id": "b9c1465b-5e05-4688-a897-886b0574bf4f",
+      "id": "682a99df-db9b-4871-b31f-f9d60528c0f3",
       "name": "Confirm Reply Sent in Ledger",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -1738,7 +1738,7 @@
       "waitBetweenTries": 2000
     },
     {
-      "id": "bdc6727a-7520-4026-8a31-96396e667686",
+      "id": "adaaf1a2-952b-46dd-9aa4-88129c2c7653",
       "name": "Build Send-Uncertain Review",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1751,7 +1751,7 @@
       }
     },
     {
-      "id": "332e91e1-6e84-48c8-a025-7105f4d536c2",
+      "id": "2a338fa6-ded5-44de-9515-2ddddec3a18f",
       "name": "UPSERT Send-Uncertain Review",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -1923,7 +1923,7 @@
       }
     },
     {
-      "id": "11e3ea4d-7901-479f-a8b1-58b71457a3e4",
+      "id": "65870a4f-06e7-4867-aed1-c00495570022",
       "name": "Mark Draft/Test Read",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
@@ -1937,7 +1937,7 @@
       }
     },
     {
-      "id": "0368c7f3-b69e-47b9-a877-34d4257986d6",
+      "id": "df078c75-3fd0-4d6b-ab8e-e47121abf521",
       "name": "Mark Replied Read",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
@@ -1951,7 +1951,7 @@
       }
     },
     {
-      "id": "0af3d33d-3849-41e7-b58b-2182561d61d2",
+      "id": "d5bb0c86-9140-461c-97bb-8fd3408133c0",
       "name": "Audit Success",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -2077,7 +2077,7 @@
       }
     },
     {
-      "id": "b709dc04-33a3-4bf0-bad5-3abe843b252c",
+      "id": "f4c8454a-d0a3-413e-84d3-a624693613ae",
       "name": "Audit Draft",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -2203,7 +2203,7 @@
       }
     },
     {
-      "id": "e9a5365d-4b78-4776-948e-199d2d4dc619",
+      "id": "8a941f7e-8208-43d0-b64d-4048e97349be",
       "name": "Audit Send Uncertain",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -2329,7 +2329,7 @@
       }
     },
     {
-      "id": "db4b2915-a354-4ae8-8260-d96e028a0bb5",
+      "id": "62b1d32a-03a3-4d87-b7c8-8ad4befd8704",
       "name": "99 — Activation gate",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -2345,7 +2345,7 @@
       }
     },
     {
-      "id": "0aa76059-2e32-4f02-9fab-f96d7b1ae80d",
+      "id": "7398bb76-8bc0-4247-92f3-e4b77e3e8574",
       "name": "Lookup AUTO SEND Config",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -2383,7 +2383,7 @@
       "alwaysOutputData": true
     },
     {
-      "id": "726c9aa7-ca0e-408f-bad3-ccaaf2f769e8",
+      "id": "6f1f56b2-8d58-417e-980e-45726ca79dd8",
       "name": "Apply Runtime Config",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2396,7 +2396,7 @@
       }
     },
     {
-      "id": "597f5690-48a3-4f47-a246-c3908109473b",
+      "id": "fdf313f8-c1d4-48c0-a132-43b0b6e1f55d",
       "name": "Verify Reply Safety",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.9,
@@ -2424,7 +2424,7 @@
       "onError": "continueErrorOutput"
     },
     {
-      "id": "53807515-9e3f-47b6-a8bc-a5ba608a1649",
+      "id": "e83da33a-3e36-4267-ae08-41b7dd903196",
       "name": "Reply Safety Model",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.3,
@@ -2444,7 +2444,7 @@
       }
     },
     {
-      "id": "94c8c98f-3f3c-436e-ba2a-fcc813bcc8dc",
+      "id": "a725d0f9-3ae1-4995-9699-78400fceb935",
       "name": "Reply Safety Schema",
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
@@ -2459,7 +2459,7 @@
       }
     },
     {
-      "id": "c0aa229b-367c-44ca-8eeb-be14826e7e52",
+      "id": "1d57fcc3-258c-4826-87ff-420a819fc706",
       "name": "Build Extraction Failure Review",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2472,7 +2472,7 @@
       }
     },
     {
-      "id": "354ee3fc-8a08-43bc-8a74-aab622a1d40f",
+      "id": "76740041-a9d0-406c-9359-0d51d83f50df",
       "name": "UPSERT Extraction Failure Review",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -2644,7 +2644,7 @@
       }
     },
     {
-      "id": "15d67814-bbb7-4dcf-a6e3-64a95148c5af",
+      "id": "831e46a9-c36b-4b36-b649-72295ec87953",
       "name": "Persist Extraction Failure Ledger",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -2783,7 +2783,7 @@
       }
     },
     {
-      "id": "e0da5424-33ad-4253-ae26-167d8f9846c7",
+      "id": "0ebbd7c1-3338-440b-8c35-49106de8736d",
       "name": "Audit Extraction Failure",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -2908,7 +2908,7 @@
       }
     },
     {
-      "id": "bbf8d079-125f-492a-80b2-11089ec5dd15",
+      "id": "756d6996-e389-4182-8397-10a3b74826ee",
       "name": "Mark Extraction Failure Read",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
@@ -2922,7 +2922,7 @@
       }
     },
     {
-      "id": "810086a4-d920-430f-8f02-1bbdd0248c80",
+      "id": "2eeca863-7c30-44a5-87c4-3897f12cb49a",
       "name": "98 — Defense in depth",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -3416,7 +3416,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "timezone": "Europe/Athens"
   },
-  "versionId": "b3b8a5b8-89c1-4663-bf4d-24891563886d",
+  "versionId": "cd2f1c2b-f123-40a4-b465-ec9ba5b83d68",
   "meta": {
     "templateCredsSetupCompleted": false
   },

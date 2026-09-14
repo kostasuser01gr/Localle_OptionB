@@ -1,10 +1,10 @@
-# Release validation — v2.0-final-safe-default
+# Release validation — v2.0-final-safe-default-codex-audit
 
 Final automated release gate: **PASS**.
 
 ## Executed checks
 
-- Unit / contract tests: **77 PASS**
+- Unit / contract tests: **79 PASS**
 - Python ↔ JavaScript parity: **10,000 cases**
 - Unit fuzz: **25,000 cases**
 - Multi-turn conversation stress: **40,000 conversations / 88,000 assertions**
@@ -38,9 +38,19 @@ These are synthetic workload assumptions, not observed Localle production metric
 - Replies require both semantic verification and deterministic multilingual safety validation.
 - AI extraction failure is persisted and escalated rather than silently dropped.
 
-## External gate that remains intentionally unclaimed
+## Runtime gate
 
-This environment does not contain an n8n runtime. The export, node graph, expressions, code, schemas and contracts are validated, but an actual import/execution against the target n8n instance with bound Gmail/Google/OpenAI credentials must still be performed as a controlled test before real customer auto-send.
+The workflow imported successfully into isolated **n8n 1.117.3** on Node 22.23.2. The imported export has all 48 nodes, no credentials, and remains inactive. A loopback-only runtime on `127.0.0.1:5679` passed `/healthz`; no missing-node or workflow-compatibility error was logged.
+
+The remaining live gate is Gmail/Google Sheets/OpenAI controlled credentials. The isolated n8n credential store contains zero credentials, so no live E2E was attempted and auto-send remained `FALSE`.
+
+## Codex audit repair
+
+- Discovery: the credential-free replay reported mismatched return dates for German, French and ambiguous-date scenarios.
+- Cause: each fixture returned before replacing the inherited return date.
+- Fix: construct the fixture, set its intended return date, then return it.
+- Regression: `tests.test_demo_replay` locks all three intended date pairs; the full suite now has 79 passing tests.
+- Mutation copies exclude `.git`, `.venv`, `.n8n-runtime` and ZIP artifacts, so local runtime setup cannot affect mutation-test isolation.
 
 ## Production boundary
 

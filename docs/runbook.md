@@ -11,6 +11,8 @@
 
 Bind credentials manually; the export intentionally ships without them.
 
+The workflow was import-verified against n8n 1.117.3. Bind only controlled test credentials before its first live execution.
+
 - Gmail credential: Gmail Trigger and every Gmail action node.
 - Google Sheets credential: every Google Sheets node.
 - OpenAI credential: `Extraction Model`, `Reply Model`, `Reply Safety Model`.
@@ -24,7 +26,7 @@ Import and run `n8n/localle_reservation_logic_demo.n8n.json`. It performs no ext
 Also run locally:
 
 ```bash
-python tools/run_validation.py
+.venv/bin/python tools/run_validation.py
 ```
 
 Expected: all gates PASS except the explicitly documented external n8n runtime gate if it has not yet been executed.

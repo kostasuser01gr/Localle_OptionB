@@ -204,7 +204,16 @@ for cache in ROOT.rglob('__pycache__'):
         except OSError: pass
 files=[]
 for p in sorted(ROOT.rglob('*')):
-    if p.is_file() and p.name!='MANIFEST.sha256' and '__pycache__' not in p.parts and p.suffix!='.pyc':
+    if (
+        p.is_file()
+        and p.name != 'MANIFEST.sha256'
+        and '__pycache__' not in p.parts
+        and p.suffix != '.pyc'
+        and p.suffix != '.zip'
+        and '.git' not in p.parts
+        and '.venv' not in p.parts
+        and '.n8n-runtime' not in p.parts
+    ):
         files.append(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(ROOT)}")
 (ROOT/'MANIFEST.sha256').write_text('\n'.join(files)+'\n',encoding='utf-8')
 print(json.dumps(report,ensure_ascii=False,indent=2))

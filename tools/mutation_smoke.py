@@ -8,6 +8,9 @@ from pathlib import Path
 from typing import Callable
 
 ROOT = Path(__file__).resolve().parents[1]
+IGNORED_WORKSPACE_ARTIFACTS = (
+    "__pycache__", "*.pyc", "evidence", ".git", ".venv", ".n8n-runtime", "*.zip",
+)
 
 
 def _workflow_mutator(fn: Callable[[dict], None]):
@@ -29,7 +32,7 @@ def _run_mutation(name: str, mutator: Callable[[Path], None], command: list[str]
         shutil.copytree(
             ROOT,
             target,
-            ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "evidence", ".git"),
+            ignore=shutil.ignore_patterns(*IGNORED_WORKSPACE_ARTIFACTS),
         )
         mutator(target)
         proc = subprocess.run(command, cwd=target, text=True, capture_output=True)

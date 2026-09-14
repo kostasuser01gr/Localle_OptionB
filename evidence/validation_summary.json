@@ -1,8 +1,8 @@
 {
-  "release": "v2.0-final-safe-default",
+  "release": "v2.0-final-safe-default-codex-runtime-audit",
   "python_compile": "PASS",
   "unit_tests": "PASS",
-  "unit_test_count": 77,
+  "unit_test_count": 79,
   "python_js_parity_cases": 10000,
   "unit_fuzz_cases": 25000,
   "multi_turn_stress_iterations": 40000,
@@ -38,10 +38,15 @@
   "demo_replay": "PASS",
   "release_graph_audit": "PASS",
   "auto_send_control": "Config Sheet fail-closed",
-  "elapsed_seconds": 30.403,
+  "elapsed_seconds": 57.706,
   "limitations": [
-    "Generated n8n JSON is statically validated but not executed inside a live n8n runtime in this environment.",
+    "n8n import and credential-free loopback runtime passed on n8n 1.117.3; controlled Gmail/Google Sheets/OpenAI E2E remains unexecuted because no credentials are available.",
     "Google Sheets event idempotency is best-effort under simultaneous distributed executions; a transactional store is recommended for hard exactly-once production semantics.",
     "No real availability, live quote, or fleet source is connected; the workflow must never invent these facts."
-  ]
+  ],
+  "validation_execution": "Post-repair checks were run individually because this environment terminates a single foreground command at 30 seconds.",
+  "n8n_runtime_import": "PASS — imported 48-node inactive credential-free workflow",
+  "controlled_runtime": "PASS — loopback health endpoint and imported workflow inspection",
+  "gmail_sheets_openai_e2e": "BLOCKED — controlled Gmail, Google Sheets, and OpenAI credentials unavailable",
+  "n8n_runtime_version": "1.117.3"
 }

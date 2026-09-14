@@ -1,4 +1,4 @@
-
+test_multilingual_demo_fixtures_have_their_intended_return_dates (tests.test_demo_replay.DemoReplayFixtureTests.test_multilingual_demo_fixtures_have_their_intended_return_dates) ... ok
 test_auto_submitted_ignored (tests.test_email_normalizer.EmailNormalizerTests.test_auto_submitted_ignored) ... ok
 test_bounce_ignored (tests.test_email_normalizer.EmailNormalizerTests.test_bounce_ignored) ... ok
 test_bulk_ignored (tests.test_email_normalizer.EmailNormalizerTests.test_bulk_ignored) ... ok
@@ -30,6 +30,7 @@ test_all_google_sheet_targets_exist_in_live_contract (tests.test_live_sheet_cont
 test_google_sheet_mapping_columns_exist (tests.test_live_sheet_contract.LiveSheetContractTests.test_google_sheet_mapping_columns_exist) ... ok
 test_live_contract_sheet_id_matches_workflow (tests.test_live_sheet_contract.LiveSheetContractTests.test_live_contract_sheet_id_matches_workflow) ... ok
 test_required_runtime_tables_are_present (tests.test_live_sheet_contract.LiveSheetContractTests.test_required_runtime_tables_are_present) ... ok
+test_local_runtime_artifacts_are_not_copied_into_mutation_cases (tests.test_mutation_smoke.MutationSmokeWorkspaceTests.test_local_runtime_artifacts_are_not_copied_into_mutation_cases) ... ok
 test_ai_extractor_has_no_tools (tests.test_n8n_contract.N8nContractTests.test_ai_extractor_has_no_tools) ... ok
 test_all_code_nodes_are_javascript_syntax_valid (tests.test_n8n_contract.N8nContractTests.test_all_code_nodes_are_javascript_syntax_valid) ... ok
 test_all_n8n_expression_node_references_exist (tests.test_n8n_contract.N8nContractTests.test_all_n8n_expression_node_references_exist) ... ok
@@ -78,6 +79,6 @@ test_first_message_needs_info (tests.test_store_pipeline.PipelineTests.test_firs
 test_followup_updates_same_request (tests.test_store_pipeline.PipelineTests.test_followup_updates_same_request) ... ok
 
 ----------------------------------------------------------------------
-Ran 77 tests in 1.357s
+Ran 79 tests in 4.595s
 
 OK

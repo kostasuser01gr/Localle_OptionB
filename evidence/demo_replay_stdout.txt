@@ -90,7 +90,7 @@
         "confirmed": {
           "customer_name": "Anna Keller",
           "pickup_date": "5 August",
-          "return_date": "23 July",
+          "return_date": "10 August",
           "pickup_time": null,
           "pickup_location": "Kos Airport",
           "return_location": null,
@@ -124,7 +124,7 @@
         "confirmed": {
           "customer_name": "Jean Dupont",
           "pickup_date": "3 September",
-          "return_date": "23 July",
+          "return_date": "7 September",
           "pickup_time": null,
           "pickup_location": "Kos Airport",
           "return_location": null,
@@ -150,19 +150,21 @@
       "revision": 1,
       "status": "NEEDS_INFO",
       "missing_fields": [
-        "pickup.date_text"
+        "pickup.date_text",
+        "return.date_text"
       ],
       "human_review_reason": "",
       "reply_plan": {
         "language": "en",
         "strategy": "ACKNOWLEDGE_CONFIRM_ASK_ONLY_MISSING",
         "missing_fields": [
-          "pickup.date_text"
+          "pickup.date_text",
+          "return.date_text"
         ],
         "confirmed": {
           "customer_name": "Chris",
           "pickup_date": "03/04",
-          "return_date": "23 July",
+          "return_date": "08/04",
           "pickup_time": null,
           "pickup_location": "Kos Airport",
           "return_location": null,
@@ -178,7 +180,7 @@
         ],
         "must_not_attack_competitor": true
       },
-      "reply": "Thanks for your request.\n\nI only need pickup date.",
+      "reply": "Thanks for your request.\n\nI only need pickup date and return date.",
       "send_enabled": false
     },
     {
@@ -235,4 +237,3 @@
     }
   ]
 }
-

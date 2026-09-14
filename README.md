@@ -52,8 +52,9 @@ Tabs:
 Requirements: Python 3.11+ recommended, Node.js, and `jsonschema` for the schema test.
 
 ```bash
-python -m pip install -r requirements-dev.txt
-python tools/run_validation.py
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/python tools/run_validation.py
 ```
 
 `run_validation.py` regenerates the base n8n workflow, applies the hardening pass, compiles the Python code, runs all tests, runs probability/stress scenarios, validates embedded JavaScript, scans for secrets, reconciles the workflow source and writes a final SHA-256 manifest.
@@ -62,7 +63,7 @@ python tools/run_validation.py
 
 `CODEX_MASTER_PROMPT.md` is the hardened handoff prompt for the final external verification pass. It instructs Codex to independently rerun the full release gate, perform a second random-seed stress pass, prove test sensitivity with mutation smoke tests, and close the remaining real-n8n runtime/import/E2E gate when the environment provides a safe test runtime and credentials.
 
-The current release gate includes **77 unit/contract tests**, **two independent random-seed stress/probability runs**, and **6/6 detected critical mutations**. Synthetic probability figures are not production metrics.
+The current release gate includes **79 unit/contract tests**, **two independent random-seed stress/probability runs**, and **6/6 detected critical mutations**. Synthetic probability figures are not production metrics.
 
 ## Controlled n8n activation
 
