@@ -1,0 +1,25 @@
+{
+  "seed": 20260913,
+  "multi_turn": {
+    "iterations": 40000,
+    "assertions": 88000,
+    "result": "PASS"
+  },
+  "reply_safety": {
+    "iterations": 30000,
+    "clean_accepts": 15020,
+    "unsafe_rejects": 14980,
+    "result": "PASS"
+  },
+  "decision_fuzz": {
+    "iterations": 100000,
+    "counts": {
+      "READY": 34580,
+      "NEEDS_INFO": 54037,
+      "HUMAN_REVIEW": 11383
+    },
+    "result": "PASS"
+  },
+  "note": "Synthetic stress tests validate invariants; they are not observed Localle production probabilities."
+}
+

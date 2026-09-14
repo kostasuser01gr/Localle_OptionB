@@ -1,0 +1,45 @@
+{
+  "result": "PASS",
+  "mutations_total": 6,
+  "mutations_detected": 6,
+  "mutations": [
+    {
+      "mutation": "workflow_active_true",
+      "detected": true,
+      "command": "python3 -m unittest tests.test_n8n_contract.N8nContractTests.test_safe_default_and_inactive",
+      "returncode": 1
+    },
+    {
+      "mutation": "request_upsert_key_thread_id_to_message_id",
+      "detected": true,
+      "command": "python3 -m unittest tests.test_n8n_contract.N8nContractTests.test_business_entity_and_event_matching_keys_are_locked",
+      "returncode": 1
+    },
+    {
+      "mutation": "ambiguous_numeric_date_protection_removed",
+      "detected": true,
+      "command": "python3 -m unittest tests.test_normalization.DateAmbiguityTests.test_ambiguous_pickup_numeric_date_is_flagged",
+      "returncode": 1
+    },
+    {
+      "mutation": "greek_booking_confirmation_guard_removed",
+      "detected": true,
+      "command": "python3 -m unittest tests.test_reply_safety.ReplySafetyTests.test_greek_confirmation_rejected",
+      "returncode": 1
+    },
+    {
+      "mutation": "numeric_price_guard_removed",
+      "detected": true,
+      "command": "python3 -m unittest tests.test_reply_safety.ReplySafetyTests.test_exact_price_rejected",
+      "returncode": 1
+    },
+    {
+      "mutation": "gmail_blind_retry_enabled",
+      "detected": true,
+      "command": "python3 -m unittest tests.test_n8n_contract.N8nContractTests.test_send_failure_routes_to_human_review_not_blind_retry",
+      "returncode": 1
+    }
+  ],
+  "note": "Mutations are applied only in temporary copies and are never committed to release source."
+}
+

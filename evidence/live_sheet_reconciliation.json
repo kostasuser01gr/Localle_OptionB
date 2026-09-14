@@ -1,0 +1,19 @@
+{
+  "verified_at": "2026-09-13",
+  "spreadsheet_id": "1j1hSY__8sCy7Ic4qHPaya3tzUqwQscEzlnKBv7JfbNc",
+  "title": "Localle Reservation Intake — Requests",
+  "timezone": "Europe/Athens",
+  "verified_via_live_google_drive_connector": true,
+  "auto_send_enabled_observed": false,
+  "sheets": {
+    "Requests": {"columns": 36, "header": ["request_id","thread_id","last_message_id","revision","first_received_at","last_customer_message_at","updated_at","customer_name","customer_email","phone_raw","phone_normalized","phone_status","language","pickup_date_text","pickup_date_iso","pickup_time","pickup_location","return_date_text","return_date_iso","return_time","return_location","vehicle_category_raw","vehicle_category_normalized","transmission","model_text","competitor_price_mentioned","competitor_price_text","missing_fields","status","human_review_reason","extraction_confidence","reply_language","reply_strategy","next_action","reply_preview","payload_json"]},
+    "Processed_Messages": {"columns": 9, "header": ["message_id","thread_id","request_id","processed_at","result_status","reply_sent","delivery_state","execution_id","reply_preview"]},
+    "Human_Review": {"columns": 12, "header": ["request_id","thread_id","priority","customer_name","customer_email","reason","next_action","latest_message","suggested_reply","received_at","waiting_since","status"]},
+    "Audit": {"columns": 8, "header": ["timestamp","message_id","thread_id","request_id","event","status","detail","execution_id"]},
+    "Metrics": {"columns": 4, "header": ["metric","value","meaning","source"]},
+    "Config": {"columns": 3, "header": ["key","value","description"]},
+    "Test_Cases": {"columns": 12, "header": ["case_id","language","subject","email_body","expected_status","expected_missing","expected_category","expected_pickup","expected_return","competitor_price","human_review_reason","purpose"]},
+    "Validation": {"columns": 6, "header": ["check","result","scope","evidence","risk","action"]}
+  },
+  "reconciliation_result": "PASS"
+}

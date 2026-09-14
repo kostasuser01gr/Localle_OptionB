@@ -1,0 +1,27 @@
+{
+  "minimum_confidence": 0.85,
+  "auto_send_enabled": false,
+  "human_review_holding_reply_enabled": true,
+  "business_timezone": "Europe/Athens",
+  "company_name": "Meltemi Rentals",
+  "verified_business_facts": {
+    "reference_small_car_july_eur_per_day": 35,
+    "full_insurance_no_excess": true,
+    "second_driver_included": true,
+    "airport_delivery_pickup_included": true,
+    "fuel_policy": "full-to-full",
+    "support_24_7": true,
+    "no_card_amount_hold": true
+  },
+  "vehicle_model_map": {
+    "fiat panda": "MINI"
+  },
+  "semantic_reply_verifier": true,
+  "deterministic_multilingual_reply_guard": true,
+  "extraction_max_attempts": 3,
+  "gmail_send_blind_retry": false,
+  "google_sheets_idempotency": "BEST_EFFORT",
+  "availability_source": null,
+  "live_quote_source": null,
+  "credentials_embedded": false
+}

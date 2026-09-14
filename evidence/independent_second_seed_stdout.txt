@@ -1,0 +1,62 @@
+{
+  "result": "PASS",
+  "seed": 20261031,
+  "python_js_parity": {
+    "cases": 10000,
+    "result": "PASS"
+  },
+  "multi_turn": {
+    "iterations": 40000,
+    "assertions": 88000,
+    "result": "PASS"
+  },
+  "reply_safety": {
+    "iterations": 30000,
+    "clean_accepts": 14928,
+    "unsafe_rejects": 15072,
+    "result": "PASS"
+  },
+  "decision_fuzz": {
+    "iterations": 100000,
+    "counts": {
+      "READY": 34599,
+      "NEEDS_INFO": 53714,
+      "HUMAN_REVIEW": 11687
+    },
+    "result": "PASS"
+  },
+  "probability": {
+    "smooth": {
+      "n": 50000,
+      "counts": {
+        "READY": 34379,
+        "NEEDS_INFO": 13907,
+        "HUMAN_REVIEW": 1714
+      },
+      "automated_pct": 96.572,
+      "human_review_pct": 3.428
+    },
+    "base": {
+      "n": 50000,
+      "counts": {
+        "NEEDS_INFO": 21328,
+        "READY": 24920,
+        "HUMAN_REVIEW": 3752
+      },
+      "automated_pct": 92.496,
+      "human_review_pct": 7.504
+    },
+    "adverse": {
+      "n": 50000,
+      "counts": {
+        "NEEDS_INFO": 26647,
+        "READY": 15970,
+        "HUMAN_REVIEW": 7383
+      },
+      "automated_pct": 85.234,
+      "human_review_pct": 14.766
+    }
+  },
+  "synthetic_note": "Second independent random-seed run; probability rates are synthetic, not observed production metrics."
+}
+

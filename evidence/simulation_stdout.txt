@@ -1,0 +1,33 @@
+{
+  "adverse": {
+    "automated_pct": 85.13,
+    "counts": {
+      "HUMAN_REVIEW": 7435,
+      "NEEDS_INFO": 26661,
+      "READY": 15904
+    },
+    "human_review_pct": 14.87,
+    "n": 50000
+  },
+  "base": {
+    "automated_pct": 92.314,
+    "counts": {
+      "HUMAN_REVIEW": 3843,
+      "NEEDS_INFO": 21303,
+      "READY": 24854
+    },
+    "human_review_pct": 7.686,
+    "n": 50000
+  },
+  "smooth": {
+    "automated_pct": 96.58,
+    "counts": {
+      "HUMAN_REVIEW": 1710,
+      "NEEDS_INFO": 14155,
+      "READY": 34135
+    },
+    "human_review_pct": 3.42,
+    "n": 50000
+  }
+}
+

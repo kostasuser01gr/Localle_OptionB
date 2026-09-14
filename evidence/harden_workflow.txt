@@ -1,0 +1,2 @@
+hardened 48 nodes -> /mnt/data/codex_localle_review/unpacked/localle_reservation_intake_final/n8n/localle_reservation_intake_v1.n8n.json
+

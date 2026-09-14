@@ -1,0 +1,11 @@
+{
+  "result": "PASS",
+  "workflow_nodes": 48,
+  "main_reachable_execution_nodes": 40,
+  "unique_customer_send_nodes": 1,
+  "credentials_embedded": false,
+  "ships_active": false,
+  "auto_send_default": false,
+  "sheet_contracts_checked": true,
+  "final_alias_identical": true
+}

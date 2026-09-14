@@ -1,0 +1,116 @@
+{
+  "name": "Localle — Reservation Logic Replay (NO CREDENTIALS)",
+  "nodes": [
+    {
+      "id": "45353119-8b18-4666-8779-5c17ddf64d5b",
+      "name": "README",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -900,
+        -500
+      ],
+      "parameters": {
+        "content": "# Credential-free regression replay\nRuns representative extracted reservation cases through the deterministic state machine. It **never sends email or writes external data**.",
+        "width": 520,
+        "height": 260,
+        "color": 6
+      }
+    },
+    {
+      "id": "ee36f00f-0fa3-4acc-af42-da126dea47ea",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -820,
+        -80
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "4131e491-0bbb-4369-9a25-f4bd82ca991d",
+      "name": "Generate Scenarios",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -580,
+        -80
+      ],
+      "parameters": {
+        "jsCode": "const base={language:'en',customer_name:'John Smith',phone:'+44 7700 123456',email:'john@example.com',pickup:{date_text:'18 July',date_iso:null,time_text:'10:00',location:'Kos Airport'},return:{date_text:'23 July',date_iso:null,time_text:null,location:null},vehicle:{category:'small',transmission:'automatic',model_text:null},competitor:{price_mentioned:false,price_text:null},multiple_requests:false,ambiguities:[],confidence:.98};const cases=[['complete',base],['missing-name-phone',{...structuredClone(base),customer_name:null,phone:null}],['low-confidence',{...structuredClone(base),confidence:.4}],['competitor',{...structuredClone(base),competitor:{price_mentioned:true,price_text:'8 EUR/day'}}],['multiple',{...structuredClone(base),multiple_requests:true}],['bad-phone',{...structuredClone(base),phone:'123'}]];return cases.map(([case_name,extraction],i)=>({json:{case_name,extraction,message_id:'demo-'+i,thread_id:'thread-'+i}}));"
+      }
+    },
+    {
+      "id": "af5a6e51-a5ce-432a-acfc-faaf58b5468a",
+      "name": "Decision Engine",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        -80
+      ],
+      "parameters": {
+        "jsCode": "const x=structuredClone($json.extraction);const required=['customer_name','phone','pickup.date_text','return.date_text','vehicle.category'];const get=(o,p)=>p.split('.').reduce((v,k)=>v&&typeof v==='object'?v[k]:null,o);const present=v=>!(v==null||(typeof v==='string'&&!v.trim()));const digits=String(x.phone||'').replace(/\\D/g,'');x.phone_status=!x.phone?'missing':(digits.length>=8&&digits.length<=15?'plausible':'invalid_length');const missing=required.filter(p=>!present(get(x,p)));if(x.phone_status.startsWith('invalid')&&!missing.includes('phone'))missing.push('phone');const review=[];if(x.multiple_requests)review.push('multiple_requests_in_one_message');if(Number(x.confidence||0)<.85)review.push('low_extraction_confidence');for(const a of x.ambiguities||[])if(a?.severity==='high')review.push(a.code);let status=review.length?'HUMAN_REVIEW':missing.length?'NEEDS_INFO':'READY';return [{json:{...$json,status,missing_fields:missing,human_review_reason:[...new Set(review)].join(','),competitor_price_mentioned:Boolean(x.competitor?.price_mentioned),PASS:['READY','NEEDS_INFO','HUMAN_REVIEW'].includes(status)}}];"
+      }
+    },
+    {
+      "id": "51ab7b95-7a06-4ebd-9f52-be883d0969a2",
+      "name": "Summarize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        -80
+      ],
+      "parameters": {
+        "jsCode": "return $input.all().map(i=>({json:{case:i.json.case_name,status:i.json.status,missing_fields:i.json.missing_fields,human_review_reason:i.json.human_review_reason,pass:i.json.PASS}}));"
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Generate Scenarios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Scenarios": {
+      "main": [
+        [
+          {
+            "node": "Decision Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decision Engine": {
+      "main": [
+        [
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "53084c7b-e27b-42e8-839e-49b63a6fad04",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

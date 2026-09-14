@@ -1,0 +1,238 @@
+{
+  "safe_default": "auto_send_enabled=false",
+  "cases": [
+    {
+      "case": "english_missing_identity",
+      "duplicate": false,
+      "request_id": "REQ-231F8858EE",
+      "revision": 1,
+      "status": "NEEDS_INFO",
+      "missing_fields": [
+        "customer_name",
+        "phone"
+      ],
+      "human_review_reason": "",
+      "reply_plan": {
+        "language": "en",
+        "strategy": "ACKNOWLEDGE_CONFIRM_ASK_ONLY_MISSING",
+        "missing_fields": [
+          "customer_name",
+          "phone"
+        ],
+        "confirmed": {
+          "customer_name": null,
+          "pickup_date": "18 July",
+          "return_date": "23 July",
+          "pickup_time": "10:00",
+          "pickup_location": "Kos Airport",
+          "return_location": null,
+          "vehicle_category": "small",
+          "transmission": "automatic"
+        },
+        "include_total_cost_comparison": false,
+        "forbidden_claims": [
+          "availability_confirmed",
+          "booking_confirmed",
+          "exact_quote_without_source",
+          "vehicle_assignment"
+        ],
+        "must_not_attack_competitor": true
+      },
+      "reply": "Thanks for your request.\n\nI only need full name and contact phone number.",
+      "send_enabled": false
+    },
+    {
+      "case": "english_followup_same_request",
+      "duplicate": false,
+      "request_id": "REQ-231F8858EE",
+      "revision": 2,
+      "status": "READY",
+      "missing_fields": [],
+      "human_review_reason": "",
+      "reply_plan": {
+        "language": "en",
+        "strategy": "ACKNOWLEDGE_CONFIRM_VALUE_AND_NEXT_STEP",
+        "missing_fields": [],
+        "confirmed": {
+          "customer_name": "John Smith",
+          "pickup_date": "18 July",
+          "return_date": "23 July",
+          "pickup_time": "10:00",
+          "pickup_location": "Kos Airport",
+          "return_location": null,
+          "vehicle_category": "small",
+          "transmission": "automatic"
+        },
+        "include_total_cost_comparison": false,
+        "forbidden_claims": [
+          "availability_confirmed",
+          "booking_confirmed",
+          "exact_quote_without_source",
+          "vehicle_assignment"
+        ],
+        "must_not_attack_competitor": true
+      },
+      "reply": "Thanks for your request.\n\nWe’ll now check availability and prepare the exact offer before confirming anything.",
+      "send_enabled": false
+    },
+    {
+      "case": "german_complete",
+      "duplicate": false,
+      "request_id": "REQ-EDFC28A20D",
+      "revision": 1,
+      "status": "READY",
+      "missing_fields": [],
+      "human_review_reason": "",
+      "reply_plan": {
+        "language": "de",
+        "strategy": "ACKNOWLEDGE_CONFIRM_VALUE_AND_NEXT_STEP",
+        "missing_fields": [],
+        "confirmed": {
+          "customer_name": "Anna Keller",
+          "pickup_date": "5 August",
+          "return_date": "23 July",
+          "pickup_time": null,
+          "pickup_location": "Kos Airport",
+          "return_location": null,
+          "vehicle_category": "small",
+          "transmission": "automatic"
+        },
+        "include_total_cost_comparison": false,
+        "forbidden_claims": [
+          "availability_confirmed",
+          "booking_confirmed",
+          "exact_quote_without_source",
+          "vehicle_assignment"
+        ],
+        "must_not_attack_competitor": true
+      },
+      "reply": "Vielen Dank für Ihre Anfrage.\n\nWir prüfen nun die Verfügbarkeit und erstellen das genaue Angebot, bevor etwas bestätigt wird.",
+      "send_enabled": false
+    },
+    {
+      "case": "french_competitor_objection",
+      "duplicate": false,
+      "request_id": "REQ-D58A61F7DE",
+      "revision": 1,
+      "status": "READY",
+      "missing_fields": [],
+      "human_review_reason": "",
+      "reply_plan": {
+        "language": "fr",
+        "strategy": "ACKNOWLEDGE_CONFIRM_VALUE_AND_NEXT_STEP",
+        "missing_fields": [],
+        "confirmed": {
+          "customer_name": "Jean Dupont",
+          "pickup_date": "3 September",
+          "return_date": "23 July",
+          "pickup_time": null,
+          "pickup_location": "Kos Airport",
+          "return_location": null,
+          "vehicle_category": "small",
+          "transmission": "automatic"
+        },
+        "include_total_cost_comparison": true,
+        "forbidden_claims": [
+          "availability_confirmed",
+          "booking_confirmed",
+          "exact_quote_without_source",
+          "vehicle_assignment"
+        ],
+        "must_not_attack_competitor": true
+      },
+      "reply": "Merci pour votre demande.\n\nNous allons maintenant vérifier la disponibilité et préparer l’offre exacte avant toute confirmation.\n\nPour comparer les prix, il est utile de regarder le montant total réellement payable, y compris assurance, franchise/dépôt, frais d’aéroport et conducteur supplémentaire.",
+      "send_enabled": false
+    },
+    {
+      "case": "ambiguous_numeric_date",
+      "duplicate": false,
+      "request_id": "REQ-0FB0266CDB",
+      "revision": 1,
+      "status": "NEEDS_INFO",
+      "missing_fields": [
+        "pickup.date_text"
+      ],
+      "human_review_reason": "",
+      "reply_plan": {
+        "language": "en",
+        "strategy": "ACKNOWLEDGE_CONFIRM_ASK_ONLY_MISSING",
+        "missing_fields": [
+          "pickup.date_text"
+        ],
+        "confirmed": {
+          "customer_name": "Chris",
+          "pickup_date": "03/04",
+          "return_date": "23 July",
+          "pickup_time": null,
+          "pickup_location": "Kos Airport",
+          "return_location": null,
+          "vehicle_category": "small",
+          "transmission": "automatic"
+        },
+        "include_total_cost_comparison": false,
+        "forbidden_claims": [
+          "availability_confirmed",
+          "booking_confirmed",
+          "exact_quote_without_source",
+          "vehicle_assignment"
+        ],
+        "must_not_attack_competitor": true
+      },
+      "reply": "Thanks for your request.\n\nI only need pickup date.",
+      "send_enabled": false
+    },
+    {
+      "case": "multiple_requests",
+      "duplicate": false,
+      "request_id": "REQ-F449FCAADB",
+      "revision": 1,
+      "status": "HUMAN_REVIEW",
+      "missing_fields": [],
+      "human_review_reason": "multiple_requests_in_one_message",
+      "reply_plan": {
+        "language": "en",
+        "strategy": "SAFE_HOLDING_REPLY",
+        "missing_fields": [],
+        "confirmed": {
+          "customer_name": "John Smith",
+          "pickup_date": "18 July",
+          "return_date": "23 July",
+          "pickup_time": "10:00",
+          "pickup_location": "Kos Airport",
+          "return_location": null,
+          "vehicle_category": "small",
+          "transmission": "automatic"
+        },
+        "include_total_cost_comparison": false,
+        "forbidden_claims": [
+          "availability_confirmed",
+          "booking_confirmed",
+          "exact_quote_without_source",
+          "vehicle_assignment"
+        ],
+        "must_not_attack_competitor": true
+      },
+      "reply": "We received your request and a member of our team will review the details shortly.",
+      "send_enabled": false
+    },
+    {
+      "case": "duplicate_delivery",
+      "duplicate": true,
+      "request_id": null,
+      "revision": null,
+      "status": "NO_CHANGE",
+      "missing_fields": [],
+      "human_review_reason": "duplicate_message_id",
+      "reply_plan": null,
+      "reply": "",
+      "send_enabled": false
+    },
+    {
+      "case": "auto_reply_loop_guard",
+      "status": "NO_CHANGE",
+      "extractor_called": false,
+      "reply": ""
+    }
+  ]
+}
+
