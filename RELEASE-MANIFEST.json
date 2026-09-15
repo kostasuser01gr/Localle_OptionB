@@ -1,0 +1,23 @@
+{
+  "release": "Localle Option B zero-cost handover",
+  "workflow_id": "LOCALLEOPTB2026A",
+  "n8n_version": "1.117.3",
+  "ollama_model": "llama3.1:8b",
+  "ai_provider": "local_ollama_only",
+  "auto_send_required_default": false,
+  "workflow_artifact": "n8n/Localle_Option_B_Reservation_Intake_FINAL.n8n.json",
+  "sheets_schema_manifest": "config/live_sheet_contract.json",
+  "status": "NO-GO_PENDING_CONTROLLED_PROVIDER_E2E",
+  "windows_validation": "STRUCTURALLY_PREPARED_NOT_LIVE_TESTED",
+  "workflow_sha256": "1cfeb66a04b222a9519575b8521edc1d115c017dc76748e126cce32a2a0636a6",
+  "local_checkpoint": "PASS — stored workflow operational graph equals approved artifact; n8n 1.117.3 compatibility verified",
+  "live_provider_e2e": "PENDING_AUTHORIZED_CONTROLLED_TEST",
+  "release_zip": "STALE — must be rebuilt only after live E2E and final gate completion",
+  "security_action_required": "Exposure class D (external transcript retention unknown): owner-approved development credential-store remediation decision required; no automatic rotation",
+  "development_key_rotation_required_for_release": "NO — company setup generates an independent protected local key",
+  "credential_portability": "PASS_ISOLATED_FRESH_STATE — supported n8n name/type import matching resolved 27 bindings from three synthetic unconnected company credential fixtures; real OAuth remains pending",
+  "company_fresh_key_provisioning": "PASS — locally generated, protected 0600 config; no development config/key/database/tokens included",
+  "fresh_company_handover_evidence": "evidence/fresh-company-handover-drill.json",
+  "oauth_client_resolution": "PASS_PROJECT_RESOLUTION_PENDING_HUMAN_REDIRECT_UPDATE — localle-option-b-e2e project number matches the n8n Google client family; no supported CLI mutation for Google Auth Platform Web-client redirects",
+  "credential_probe_classification": "PASS — temporary probe failure was graph configuration before provider execution; production workflow restored inactive; live E2E awaits an independent controlled sender"
+}

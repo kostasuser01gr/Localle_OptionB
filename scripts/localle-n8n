@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Single authoritative n8n entry point. Never invoke bare `n8n` for Localle.
+set -euo pipefail
+
+PROJECT_ROOT=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+source "$PROJECT_ROOT/scripts/localle-defaults.sh"
+N8N_BIN="$RUNTIME_DIR/node_modules/.bin/n8n"
+
+if [[ ! -x "$N8N_BIN" ]]; then
+  printf 'Localle n8n runtime is not installed at %s. Run scripts/setup-localle.sh.\n' "$RUNTIME_DIR" >&2
+  exit 1
+fi
+mkdir -p "$USER_FOLDER"
+if ! "$PROJECT_ROOT/scripts/check-n8n-key-config.sh" "$USER_FOLDER/.n8n/config"; then
+  printf 'Localle n8n key configuration is missing or unsafe. Run scripts/setup-localle.sh; do not let n8n auto-generate a replacement beside credentials.\n' >&2
+  exit 1
+fi
+export N8N_USER_FOLDER="$USER_FOLDER"
+export N8N_DIAGNOSTICS_ENABLED=false
+export N8N_HOST=127.0.0.1
+export N8N_LISTEN_ADDRESS=127.0.0.1
+export N8N_PORT=${LOCALLE_N8N_PORT:-5678}
+exec "$N8N_BIN" "$@"

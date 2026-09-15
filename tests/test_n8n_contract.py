@@ -73,7 +73,8 @@ class N8nContractTests(unittest.TestCase):
         self.assertEqual(c['AI Provider is Ollama (Safety)']['main'][0][0]['node'],'Verify Reply Safety')
         self.assertEqual(c['AI Provider is Ollama (Safety)']['main'][1][0]['node'],'OpenAI Verify Reply Safety')
         config=self.nodes['Apply AI Provider Config']['parameters']['jsCode']
-        self.assertIn("raw==='ollama'?'ollama':'openai'",config)
+        self.assertIn("raw&&!['ollama','openai'].includes(raw)",config)
+        self.assertIn("const ai_provider=raw||'openai'",config)
 
     def test_provider_adapters_share_exact_contract_and_cannot_bypass_safety(self):
         self.assertEqual(self.nodes['Extract Reservation']['parameters']['text'],self.nodes['OpenAI Extract Reservation']['parameters']['text'])

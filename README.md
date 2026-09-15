@@ -3,6 +3,10 @@
 **Option B — Reservation request automation**  
 Release: **v2.0 FINAL / safe default**
 
+Repository: <https://github.com/kostasuser01gr/Localle_OptionB>
+
+Production AI: **LOCAL OLLAMA ONLY** (`llama3.1:8b`). OpenAI API: **NOT USED / NOT REQUIRED**.
+
 This package implements the Localle take-home as a small reservation-intake system rather than a simple email parser.
 
 Before activation, create the Gmail label `localle-reservation-intake` and assign it only to messages intended for this workflow. The workflow intentionally does not poll every unread Inbox message.
@@ -25,15 +29,16 @@ Core behavior:
 
 ## Safe default
 
-The exported workflow is **inactive**, contains **no credentials**, and the live Google Sheet has `Config → auto_send_enabled = FALSE`.
+The company workflow is **inactive** and contains only three portable credential names—not credentials, tokens, or credential IDs. The live Google Sheet must have `Config → auto_send_enabled = FALSE` before any provider test.
 
 Even after the workflow is activated in n8n, no customer reply is sent until that Config value is deliberately changed to `TRUE`. Missing/invalid config resolves to `false`.
 
 ## Files to use
 
-- `n8n/Localle_Option_B_Reservation_Intake_FINAL.n8n.json` — primary production workflow export.
-- `n8n/localle_reservation_intake_v1.n8n.json` — identical compatibility copy used by the test harness.
-- `n8n/localle_reservation_logic_demo.n8n.json` — credential-free logic replay.
+For a company delivery, use only the release ZIP built by `tools/create_release_package.py`. The repository’s historical `n8n/` dual-provider source files are explicitly non-production; the builder replaces them with the approved local-Ollama production artifact.
+
+- `n8n/Localle_Option_B_Reservation_Intake_FINAL.n8n.json` and `n8n/localle_reservation_intake_v1.n8n.json` — legacy repository sources, retained only for historical test coverage; never ship or import them for a company installation.
+- `n8n/localle_reservation_logic_demo.n8n.json` — credential-free legacy logic replay; never ship it as production.
 - `schemas/extraction.schema.json` — strict extraction contract.
 - `prompts/` — extractor, reply renderer and independent reply-verifier policies.
 - `src/` — executable Python reference implementation and transactional SQLite test harness.
@@ -65,14 +70,13 @@ python3 -m venv .venv
 
 `CODEX_MASTER_PROMPT.md` is the hardened handoff prompt for the final external verification pass. It instructs Codex to independently rerun the full release gate, perform a second random-seed stress pass, prove test sensitivity with mutation smoke tests, and close the remaining real-n8n runtime/import/E2E gate when the environment provides a safe test runtime and credentials.
 
-The current release gate includes **79 unit/contract tests**, **two independent random-seed stress/probability runs**, and **6/6 detected critical mutations**. Synthetic probability figures are not production metrics.
+The current release gate includes **84 unit/contract tests**, two independent random-seed stress/probability runs, and **6/6 detected critical mutations**. Synthetic probability figures are not production metrics.
 
 ## Controlled n8n activation
 
-1. Import `n8n/Localle_Option_B_Reservation_Intake_FINAL.n8n.json`.
-2. Bind Gmail credentials to Gmail Trigger/Gmail action nodes.
-3. Bind Google Sheets credentials to the Sheets nodes.
-4. Bind OpenAI credentials to the three Chat Model nodes.
+1. Create the three named company credentials in n8n as documented in `COMPANY-QUICKSTART.md`.
+2. Run `./scripts/import-localle-workflow.sh`; it imports the approved artifact and n8n resolves all 27 node references by supported credential name/type matching.
+4. Do not configure a cloud AI credential.
 5. Confirm the spreadsheet ID and tabs.
 6. Leave `Config!auto_send_enabled = FALSE`.
 7. Activate the workflow and send test emails **from a separate test mailbox**.
@@ -90,4 +94,4 @@ Google Sheets is appropriate for the take-home and low-volume operational view, 
 
 ## Validation truthfulness
 
-The generated n8n JSON is deeply static-tested and its Code nodes are syntax-checked. This execution environment does **not** contain an n8n runtime, so an actual import/execution inside the target n8n version is an explicit final external gate rather than a fabricated PASS. No real customer email has been sent during development.
+The generated n8n JSON is deeply static-tested and its Code nodes are syntax-checked. The pinned n8n runtime has passed a controlled inactive import and export round-trip. Provider-backed Gmail and Google Sheets E2E remains a controlled external gate; no real customer email has been sent during development.

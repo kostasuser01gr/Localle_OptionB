@@ -32,7 +32,13 @@ function selectedTypeIsExecutableOrSubNode(nodeType) {
   return Boolean(nodeType?.execute || nodeType?.trigger || nodeType?.poll || nodeType?.webhook || nodeType?.supplyData);
 }
 
-const workflow = readJson(workflowPath);
+const exported = readJson(workflowPath);
+// `n8n export:workflow --id` emits a one-element array, while an import
+// artifact is an object. Treat both representations identically.
+const workflow = Array.isArray(exported) ? exported[0] : exported;
+if (!workflow || !Array.isArray(workflow.nodes)) {
+  throw new Error(`Workflow at ${workflowPath} is neither a workflow object nor a one-item export array`);
+}
 const { NodeHelpers } = require(path.join(runtimeModules, 'n8n-workflow'));
 const registries = {
   'n8n-nodes-base': packageRegistry('n8n-nodes-base'),
