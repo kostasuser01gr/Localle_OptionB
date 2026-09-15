@@ -9,7 +9,7 @@ from typing import Callable
 
 ROOT = Path(__file__).resolve().parents[1]
 IGNORED_WORKSPACE_ARTIFACTS = (
-    "__pycache__", "*.pyc", "evidence", ".git", ".venv", ".n8n-runtime", "*.zip",
+    "__pycache__", "*.pyc", "evidence", ".git", ".venv", ".n8n*", ".playwright-cli", "*.zip",
 )
 
 

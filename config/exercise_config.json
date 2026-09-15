@@ -1,6 +1,7 @@
 {
   "minimum_confidence": 0.85,
   "auto_send_enabled": false,
+  "ai_provider": "openai",
   "human_review_holding_reply_enabled": true,
   "business_timezone": "Europe/Athens",
   "company_name": "Meltemi Rentals",

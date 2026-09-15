@@ -7,6 +7,11 @@ SCHEMA=(ROOT/'schemas'/'extraction.schema.json').read_text(encoding='utf-8')
 EXTRACT_PROMPT=(ROOT/'prompts'/'extraction_system.md').read_text(encoding='utf-8')
 REPLY_PROMPT=(ROOT/'prompts'/'reply_system.md').read_text(encoding='utf-8')
 SHEET_ID='1j1hSY__8sCy7Ic4qHPaya3tzUqwQscEzlnKBv7JfbNc'
+# The active zero-cost provider.  The chain and deterministic business engine
+# deliberately do not depend on this choice; a future OpenAI adapter can be
+# bound without changing their prompts, schemas, or downstream safety gates.
+AI_PROVIDER='ollama'
+OLLAMA_MODEL='llama3.1:8b'
 
 # Keep all external writes behind explicit gates. Credentials intentionally omitted.
 
@@ -14,6 +19,14 @@ def nid(): return str(uuid.uuid4())
 def node(name, typ, ver, pos, params, **kw):
     d={'id':nid(),'name':name,'type':typ,'typeVersion':ver,'position':list(pos),'parameters':params}
     d.update(kw); return d
+
+def gmail_http(name, pos, method, url, body=None, **kw):
+    """Credential-free least-privilege Gmail REST boundary."""
+    params={'method':method,'url':url,'authentication':'genericCredentialType',
+            'genericAuthType':'oAuth2Api','options':{'response':{'response':{'responseFormat':'json'}}}}
+    if body is not None:
+        params.update({'sendBody':True,'contentType':'json','specifyBody':'json','jsonBody':body})
+    return node(name,'n8n-nodes-base.httpRequest',4.3,pos,params,**kw)
 
 def sticky(name, pos, text, w=520, h=300, color=7):
     return node(name,'n8n-nodes-base.stickyNote',1,pos,{'content':text,'width':w,'height':h,'color':color})
@@ -27,7 +40,12 @@ def col_schema(names, matchable=()):
     return [{'id':x,'displayName':x,'required':False,'defaultMatch':False,'display':True,'type':'string','canBeUsedToMatch':x in set(matchable),'removed':False} for x in names]
 
 NORMALIZE_JS=r'''// Security boundary + email normalization. Customer email is DATA, never instructions.
-const j = $json;
+const source=$json;
+const decode=v=>{try{return Buffer.from(String(v||'').replace(/-/g,'+').replace(/_/g,'/'),'base64').toString('utf8')}catch{return ''}};
+const parts=p=>!p?[]:[...(p.body?.data?[{mimeType:p.mimeType||'',text:decode(p.body.data)}]:[]),...(p.parts||[]).flatMap(parts)];
+const apiHeaders=Object.fromEntries((source.payload?.headers||[]).map(h=>[String(h.name||'').toLowerCase(),String(h.value||'')]));
+const apiParts=parts(source.payload);const apiText=apiParts.find(p=>/^text\/plain/i.test(p.mimeType))?.text||'';const apiHtml=apiParts.find(p=>/^text\/html/i.test(p.mimeType))?.text||'';
+const j={...source,headers:source.headers||apiHeaders,text:source.text||apiText,html:source.html||apiHtml,date:source.date||(source.internalDate?new Date(Number(source.internalDate)).toISOString():''),from:source.from||apiHeaders.from||'',to:source.to||apiHeaders.to||'',subject:source.subject||apiHeaders.subject||''};
 const lowerHeaders = {};
 for (const [k,v] of Object.entries(j.headers || {})) lowerHeaders[String(k).toLowerCase()] = String(v ?? '');
 const subject = String(j.subject || lowerHeaders.subject || '');
@@ -53,10 +71,10 @@ if(disposition==='PROCESS'&&!clean){disposition='IGNORE_EMPTY';disposition_reaso
 return [{json:{
   message_id:String(j.id || j.message_id || j.messageId || ''),
   thread_id:String(j.threadId || j.thread_id || ''),
-  from:sender,to:String(j.to || lowerHeaders.to || ''),subject,
+  from:sender,to:String(j.to || lowerHeaders.to || ''),subject,rfc_message_id:String(lowerHeaders['message-id']||''),references:String(lowerHeaders.references||''),
   received_at:String(j.date || j.received_at || new Date().toISOString()),
   normalized_customer_message:clean, disposition, disposition_reason,
-  runtime:{auto_send_enabled:false,minimum_confidence:0.85,holding_reply_enabled:true}
+  runtime:{auto_send_enabled:false,ai_provider:'openai',minimum_confidence:0.85,holding_reply_enabled:true}
 }}];'''
 
 DUP_GATE_JS=r'''const original=$('Normalize Inbound').item.json;
@@ -103,45 +121,60 @@ AUD_COLS=['timestamp','message_id','thread_id','request_id','event','status','de
 REVIEW_COLS=['request_id','thread_id','priority','customer_name','customer_email','reason','next_action','latest_message','suggested_reply','received_at','waiting_since','status']
 
 nodes=[]
-nodes += [sticky('00 — Safety & scope',(-1100,-720),'# Localle Reservation Intake v1.0\n**Default safe mode: AUTO SEND = OFF.**\n\nFlow: unread Gmail → normalize → durable duplicate check → structured AI extraction → deterministic validation/state machine → Google Sheet UPSERT → constrained multilingual reply → optional same-thread Gmail reply → audit → mark read.\n\nDo not activate before binding credentials and completing the setup checklist.',620,440,5)]
-nodes += [node('Gmail Trigger','n8n-nodes-base.gmailTrigger',1.4,(-1080,-120),{'pollTimes':{'item':[{'mode':'everyX','value':1,'unit':'minutes'}]},'event':'messageReceived','simple':False,'maxResults':20,'filters':{'includeSpamTrash':False,'includeDrafts':False,'readStatus':'unread','q':'in:inbox'},'options':{}})]
+nodes += [node('Gmail Trigger','n8n-nodes-base.scheduleTrigger',1.2,(-1080,-120),{'rule':{'interval':[{'field':'minutes','minutesInterval':1}]}})]
+# A dedicated Gmail label is a mandatory safety boundary.  Polling every unread
+# inbox message would let a newly activated workflow process pre-existing,
+# unrelated mail.  The deployer creates/assigns this label only to reservation
+# intake messages; controlled E2E uses the same label.
+nodes += [gmail_http('List Unread Gmail Messages',(-880,-120),'GET','https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=20&q=label%3Alocalle-reservation-intake%20is%3Aunread')]
+nodes += [node('Expand Gmail Message References','n8n-nodes-base.code',2,(-700,-120),{'jsCode':"return ($json.messages||[]).map(m=>({json:{message_id:m.id,thread_id:m.threadId}}));"})]
+nodes += [gmail_http('Fetch Full Gmail Message',(-520,-120),'GET',"={{ `https://gmail.googleapis.com/gmail/v1/users/me/messages/${$json.message_id}?format=full` }}")]
 nodes += [node('Normalize Inbound','n8n-nodes-base.code',2,(-840,-120),{'jsCode':NORMALIZE_JS})]
-nodes += [node('Should Process?','n8n-nodes-base.if',2.3,(-600,-120),{'conditions':{'options':{'caseSensitive':True,'leftValue':'','typeValidation':'strict','version':2},'conditions':[{'id':nid(),'leftValue':'={{ $json.disposition }}','rightValue':'PROCESS','operator':{'type':'string','operation':'equals'}}],'combinator':'and'},'options':{}})]
+nodes += [node('Should Process?','n8n-nodes-base.if',2.2,(-600,-120),{'conditions':{'options':{'caseSensitive':True,'leftValue':'','typeValidation':'strict','version':2},'conditions':[{'id':nid(),'leftValue':'={{ $json.disposition }}','rightValue':'PROCESS','operator':{'type':'string','operation':'equals'}}],'combinator':'and'},'options':{}})]
 # ignored path persistence
 nodes += [node('Log Ignored Event','n8n-nodes-base.googleSheets',4.7,(-360,160),{'operation':'append','documentId':doc_locator(),'sheetName':sheet_locator('Processed_Messages'),'columns':{'mappingMode':'defineBelow','value':{'message_id':'={{ $json.message_id }}','thread_id':'={{ $json.thread_id }}','request_id':'','processed_at':'={{ $now.toISO() }}','result_status':'NO_CHANGE','reply_sent':'false','delivery_state':'IGNORED','execution_id':'={{ $execution.id }}','reply_preview':'={{ $json.disposition_reason }}'},'matchingColumns':[],'schema':col_schema(PROC_COLS),'attemptToConvertTypes':False,'convertFieldsToString':False},'options':{}})]
-nodes += [node('Mark Ignored Read','n8n-nodes-base.gmail',2.2,(-100,160),{'operation':'markAsRead','messageId':'={{ $(\'Normalize Inbound\').item.json.message_id }}'})]
+nodes += [gmail_http('Mark Ignored Read',(-100,160),'POST',"={{ `https://gmail.googleapis.com/gmail/v1/users/me/messages/${$('Normalize Inbound').item.json.message_id}/modify` }}",'{"removeLabelIds":["UNREAD"]}')]
 # process path duplicate ledger
 nodes += [node('Lookup Processed Message','n8n-nodes-base.googleSheets',4.7,(-360,-220),{'documentId':doc_locator(),'sheetName':sheet_locator('Processed_Messages'),'filtersUI':{'values':[{'lookupColumn':'message_id','lookupValue':'={{ $json.message_id }}'}]},'options':{'returnFirstMatch':True}},alwaysOutputData=True)]
 nodes += [node('Duplicate / Recovery Gate','n8n-nodes-base.code',2,(-100,-220),{'jsCode':DUP_GATE_JS})]
-nodes += [node('Already Processed?','n8n-nodes-base.if',2.3,(140,-220),{'conditions':{'options':{'caseSensitive':True,'leftValue':'','typeValidation':'strict','version':2},'conditions':[{'id':nid(),'leftValue':'={{ $json.is_duplicate }}','rightValue':True,'operator':{'type':'boolean','operation':'true','singleValue':True}}],'combinator':'and'},'options':{}})]
-nodes += [node('Was Reply Confirmed?','n8n-nodes-base.if',2.3,(380,-360),{'conditions':{'options':{'caseSensitive':True,'leftValue':'','typeValidation':'strict','version':2},'conditions':[{'id':nid(),'leftValue':'={{ $json.prior_reply_sent }}','rightValue':True,'operator':{'type':'boolean','operation':'true','singleValue':True}}],'combinator':'and'},'options':{}})]
-nodes += [node('Mark Duplicate Read','n8n-nodes-base.gmail',2.2,(640,-460),{'operation':'markAsRead','messageId':'={{ $(\'Normalize Inbound\').item.json.message_id }}'})]
+nodes += [node('Already Processed?','n8n-nodes-base.if',2.2,(140,-220),{'conditions':{'options':{'caseSensitive':True,'leftValue':'','typeValidation':'strict','version':2},'conditions':[{'id':nid(),'leftValue':'={{ $json.is_duplicate }}','rightValue':True,'operator':{'type':'boolean','operation':'true','singleValue':True}}],'combinator':'and'},'options':{}})]
+nodes += [node('Was Reply Confirmed?','n8n-nodes-base.if',2.2,(380,-360),{'conditions':{'options':{'caseSensitive':True,'leftValue':'','typeValidation':'strict','version':2},'conditions':[{'id':nid(),'leftValue':'={{ $json.prior_reply_sent }}','rightValue':True,'operator':{'type':'boolean','operation':'true','singleValue':True}}],'combinator':'and'},'options':{}})]
+nodes += [gmail_http('Mark Duplicate Read',(640,-460),'POST',"={{ `https://gmail.googleapis.com/gmail/v1/users/me/messages/${$('Normalize Inbound').item.json.message_id}/modify` }}",'{"removeLabelIds":["UNREAD"]}')]
 nodes += [node('Build Recovery Review','n8n-nodes-base.code',2,(640,-260),{'jsCode':RECOVERY_JS})]
 nodes += [node('Upsert Recovery Review','n8n-nodes-base.googleSheets',4.7,(900,-260),{'operation':'appendOrUpdate','documentId':doc_locator(),'sheetName':sheet_locator('Human_Review'),'columns':{'mappingMode':'defineBelow','value':{'request_id':'={{ $json.request_id || (\'RECOVERY-\'+$json.message_id) }}','thread_id':'={{ $json.thread_id }}','priority':'HIGH','customer_name':'','customer_email':'={{ $json.from }}','reason':'={{ $json.human_review_reason }}','next_action':'={{ $json.next_action }}','latest_message':'={{ $json.normalized_customer_message }}','suggested_reply':'','received_at':'={{ $json.received_at }}','waiting_since':'={{ $now.toISO() }}','status':'OPEN'},'matchingColumns':['request_id'],'schema':col_schema(REVIEW_COLS,['request_id']),'attemptToConvertTypes':False,'convertFieldsToString':False},'options':{}})]
-nodes += [node('Mark Recovery Read','n8n-nodes-base.gmail',2.2,(1160,-260),{'operation':'markAsRead','messageId':'={{ $(\'Normalize Inbound\').item.json.message_id }}'})]
+nodes += [gmail_http('Mark Recovery Read',(1160,-260),'POST',"={{ `https://gmail.googleapis.com/gmail/v1/users/me/messages/${$('Normalize Inbound').item.json.message_id}/modify` }}",'{"removeLabelIds":["UNREAD"]}')]
 # new event path
 nodes += [node('Lookup Request by Thread','n8n-nodes-base.googleSheets',4.7,(380,-40),{'documentId':doc_locator(),'sheetName':sheet_locator('Requests'),'filtersUI':{'values':[{'lookupColumn':'thread_id','lookupValue':'={{ $(\'Normalize Inbound\').item.json.thread_id }}'}]},'options':{'returnFirstMatch':True}},alwaysOutputData=True)]
-nodes += [node('Extract Reservation','@n8n/n8n-nodes-langchain.chainLlm',1.9,(660,-40),{'promptType':'define','text':'=Customer email metadata:\nFrom: {{ $(\'Normalize Inbound\').item.json.from }}\nSubject: {{ $(\'Normalize Inbound\').item.json.subject }}\nReceived: {{ $(\'Normalize Inbound\').item.json.received_at }}\n\nUNTRUSTED CUSTOMER CONTENT:\n---\n{{ $(\'Normalize Inbound\').item.json.normalized_customer_message }}\n---','hasOutputParser':True,'messages':{'messageValues':[{'type':'SystemMessagePromptTemplate','message':EXTRACT_PROMPT}]},'batching':{}})]
-nodes += [node('Extraction Model','@n8n/n8n-nodes-langchain.lmChatOpenAi',1.3,(620,180),{'model':{'__rl':True,'mode':'list','value':'gpt-5-mini'},'options':{'temperature':0}})]
+nodes += [node('AI Provider is Ollama (Extraction)','n8n-nodes-base.if',2.2,(560,-40),{'conditions':{'options':{'caseSensitive':True,'leftValue':'','typeValidation':'strict','version':2},'conditions':[{'id':nid(),'leftValue':"={{ $('Apply AI Provider Config').item.json.runtime.ai_provider }}",'rightValue':'ollama','operator':{'type':'string','operation':'equals'}}],'combinator':'and'},'options':{}})]
+nodes += [node('Extract Reservation','@n8n/n8n-nodes-langchain.chainLlm',1.7,(660,-40),{'promptType':'define','text':'=Customer email metadata:\nFrom: {{ $(\'Normalize Inbound\').item.json.from }}\nSubject: {{ $(\'Normalize Inbound\').item.json.subject }}\nReceived: {{ $(\'Normalize Inbound\').item.json.received_at }}\n\nUNTRUSTED CUSTOMER CONTENT:\n---\n{{ $(\'Normalize Inbound\').item.json.normalized_customer_message }}\n---','hasOutputParser':True,'messages':{'messageValues':[{'type':'SystemMessagePromptTemplate','message':EXTRACT_PROMPT}]},'batching':{}})]
+nodes += [node('Extraction Model','@n8n/n8n-nodes-langchain.lmChatOllama',1,(620,180),{'model':OLLAMA_MODEL,'options':{'temperature':0,'format':'json','numPredict':700,'numCtx':4096}})]
 nodes += [node('Strict Extraction Schema','@n8n/n8n-nodes-langchain.outputParserStructured',1.3,(820,180),{'schemaType':'manual','inputSchema':SCHEMA,'autoFix':False})]
+nodes += [node('OpenAI Extract Reservation','@n8n/n8n-nodes-langchain.chainLlm',1.7,(660,-360),{'promptType':'define','text':'=Customer email metadata:\nFrom: {{ $(\'Normalize Inbound\').item.json.from }}\nSubject: {{ $(\'Normalize Inbound\').item.json.subject }}\nReceived: {{ $(\'Normalize Inbound\').item.json.received_at }}\n\nUNTRUSTED CUSTOMER CONTENT:\n---\n{{ $(\'Normalize Inbound\').item.json.normalized_customer_message }}\n---','hasOutputParser':True,'messages':{'messageValues':[{'type':'SystemMessagePromptTemplate','message':EXTRACT_PROMPT}]},'batching':{}})]
+nodes += [node('OpenAI Extraction Model','@n8n/n8n-nodes-langchain.lmChatOpenAi',1.2,(620,-140),{'model':{'__rl':True,'mode':'list','value':'gpt-5-mini'},'options':{'temperature':0}})]
+nodes += [node('OpenAI Strict Extraction Schema','@n8n/n8n-nodes-langchain.outputParserStructured',1.3,(820,-140),{'schemaType':'manual','inputSchema':SCHEMA,'autoFix':False})]
 nodes += [node('Merge + Validate + Decide','n8n-nodes-base.code',2,(940,-40),{'jsCode':MERGE_DECISION_JS})]
 # request persistence before reply generation/sending
 req_values={c:f'={{ $json.{c} }}' for c in REQ_COLS if c not in {'missing_fields','language','last_message_id'}}
 req_values.update({'last_message_id':'={{ $json.message_id }}','language':'={{ $json.payload.language }}','missing_fields':'={{ JSON.stringify($json.missing_fields) }}'})
 nodes += [node('UPSERT Request','n8n-nodes-base.googleSheets',4.7,(1220,-40),{'operation':'appendOrUpdate','documentId':doc_locator(),'sheetName':sheet_locator('Requests'),'columns':{'mappingMode':'defineBelow','value':req_values,'matchingColumns':['thread_id'],'schema':col_schema(REQ_COLS,['thread_id']),'attemptToConvertTypes':False,'convertFieldsToString':False},'options':{}},retryOnFail=True,maxTries=3,waitBetweenTries=2000)]
-# AI renderer
-nodes += [node('Render Customer Reply','@n8n/n8n-nodes-langchain.chainLlm',1.9,(1490,-40),{'promptType':'define','text':'=Render the customer reply from this approved plan.\n\nReply plan JSON:\n{{ JSON.stringify($(\'Merge + Validate + Decide\').item.json.reply_plan) }}\n\nVerified business facts available for value framing ONLY:\n- Reference price in the exercise: 35 EUR/day for a small car in July. Do NOT quote this as a live price.\n- Full insurance with no excess\n- Second driver included\n- Airport delivery/pickup included\n- Full-to-full fuel policy\n- 24/7 support\n- No credit-card amount hold\n\nOriginal customer language: {{ $(\'Merge + Validate + Decide\').item.json.reply_language }}\nOriginal customer message:\n{{ $(\'Merge + Validate + Decide\').item.json.normalized_customer_message }}','hasOutputParser':False,'messages':{'messageValues':[{'type':'SystemMessagePromptTemplate','message':REPLY_PROMPT}]},'batching':{}})]
-nodes += [node('Reply Model','@n8n/n8n-nodes-langchain.lmChatOpenAi',1.3,(1460,180),{'model':{'__rl':True,'mode':'list','value':'gpt-5-mini'},'options':{'temperature':0.2}})]
+# Provider adapters only create/verify AI text.  All reservation state, Sheets,
+# Gmail, and send decisions below remain provider-independent.
+nodes += [node('AI Provider is Ollama (Reply)','n8n-nodes-base.if',2.2,(1430,-40),{'conditions':{'options':{'caseSensitive':True,'leftValue':'','typeValidation':'strict','version':2},'conditions':[{'id':nid(),'leftValue':"={{ $('Merge + Validate + Decide').item.json.runtime.ai_provider }}",'rightValue':'ollama','operator':{'type':'string','operation':'equals'}}],'combinator':'and'},'options':{}})]
+nodes += [node('Render Customer Reply','@n8n/n8n-nodes-langchain.chainLlm',1.7,(1490,-40),{'promptType':'define','text':'=Render the customer reply from this approved plan.\n\nReply plan JSON:\n{{ JSON.stringify($(\'Merge + Validate + Decide\').item.json.reply_plan) }}\n\nVerified business facts available for value framing ONLY:\n- Reference price in the exercise: 35 EUR/day for a small car in July. Do NOT quote this as a live price.\n- Full insurance with no excess\n- Second driver included\n- Airport delivery/pickup included\n- Full-to-full fuel policy\n- 24/7 support\n- No credit-card amount hold\n\nOriginal customer language: {{ $(\'Merge + Validate + Decide\').item.json.reply_language }}\nOriginal customer message:\n{{ $(\'Merge + Validate + Decide\').item.json.normalized_customer_message }}','hasOutputParser':False,'messages':{'messageValues':[{'type':'SystemMessagePromptTemplate','message':REPLY_PROMPT}]},'batching':{}})]
+nodes += [node('Reply Model','@n8n/n8n-nodes-langchain.lmChatOllama',1,(1460,180),{'model':OLLAMA_MODEL,'options':{'temperature':0.2,'numPredict':700,'numCtx':4096}})]
+nodes += [node('OpenAI Render Customer Reply','@n8n/n8n-nodes-langchain.chainLlm',1.7,(1490,-360),{'promptType':'define','text':'=Render the customer reply from this approved plan.\n\nReply plan JSON:\n{{ JSON.stringify($(\'Merge + Validate + Decide\').item.json.reply_plan) }}\n\nVerified business facts available for value framing ONLY:\n- Reference price in the exercise: 35 EUR/day for a small car in July. Do NOT quote this as a live price.\n- Full insurance with no excess\n- Second driver included\n- Airport delivery/pickup included\n- Full-to-full fuel policy\n- 24/7 support\n- No credit-card amount hold\n\nOriginal customer language: {{ $(\'Merge + Validate + Decide\').item.json.reply_language }}\nOriginal customer message:\n{{ $(\'Merge + Validate + Decide\').item.json.normalized_customer_message }}','hasOutputParser':False,'messages':{'messageValues':[{'type':'SystemMessagePromptTemplate','message':REPLY_PROMPT}]},'batching':{}})]
+nodes += [node('OpenAI Reply Model','@n8n/n8n-nodes-langchain.lmChatOpenAi',1.2,(1460,-140),{'model':{'__rl':True,'mode':'list','value':'gpt-5-mini'},'options':{'temperature':0.2}})]
+nodes += [node('AI Provider is Ollama (Safety)','n8n-nodes-base.if',2.2,(1730,-40),{'conditions':{'options':{'caseSensitive':True,'leftValue':'','typeValidation':'strict','version':2},'conditions':[{'id':nid(),'leftValue':"={{ $('Merge + Validate + Decide').item.json.runtime.ai_provider }}",'rightValue':'ollama','operator':{'type':'string','operation':'equals'}}],'combinator':'and'},'options':{}})]
 nodes += [node('Attach Reply + Send Gate','n8n-nodes-base.code',2,(1760,-40),{'jsCode':ATTACH_REPLY_JS})]
 # persist ledger BEFORE any external reply attempt
 proc_values={'message_id':'={{ $json.message_id }}','thread_id':'={{ $json.thread_id }}','request_id':'={{ $json.request_id }}','processed_at':'={{ $json.processed_at }}','result_status':'={{ $json.status }}','reply_sent':'false','delivery_state':'={{ $json.delivery_state }}','execution_id':'={{ $execution.id }}','reply_preview':'={{ $json.reply_preview }}'}
 nodes += [node('Persist Event Ledger','n8n-nodes-base.googleSheets',4.7,(2020,-40),{'operation':'appendOrUpdate','documentId':doc_locator(),'sheetName':sheet_locator('Processed_Messages'),'columns':{'mappingMode':'defineBelow','value':proc_values,'matchingColumns':['message_id'],'schema':col_schema(PROC_COLS,['message_id']),'attemptToConvertTypes':False,'convertFieldsToString':False},'options':{}},retryOnFail=True,maxTries=3,waitBetweenTries=2000)]
 # human review upsert branch for review cases (side branch before send decision)
-nodes += [node('Needs Human Review?','n8n-nodes-base.if',2.3,(2280,120),{'conditions':{'options':{'caseSensitive':True,'leftValue':'','typeValidation':'strict','version':2},'conditions':[{'id':nid(),'leftValue':'={{ $(\'Attach Reply + Send Gate\').item.json.status }}','rightValue':'HUMAN_REVIEW','operator':{'type':'string','operation':'equals'}}],'combinator':'and'},'options':{}})]
+nodes += [node('Needs Human Review?','n8n-nodes-base.if',2.2,(2280,120),{'conditions':{'options':{'caseSensitive':True,'leftValue':'','typeValidation':'strict','version':2},'conditions':[{'id':nid(),'leftValue':'={{ $(\'Attach Reply + Send Gate\').item.json.status }}','rightValue':'HUMAN_REVIEW','operator':{'type':'string','operation':'equals'}}],'combinator':'and'},'options':{}})]
 nodes += [node('UPSERT Human Review','n8n-nodes-base.googleSheets',4.7,(2540,180),{'operation':'appendOrUpdate','documentId':doc_locator(),'sheetName':sheet_locator('Human_Review'),'columns':{'mappingMode':'defineBelow','value':{'request_id':'={{ $(\'Attach Reply + Send Gate\').item.json.request_id }}','thread_id':'={{ $(\'Attach Reply + Send Gate\').item.json.thread_id }}','priority':'HIGH','customer_name':'={{ $(\'Attach Reply + Send Gate\').item.json.customer_name }}','customer_email':'={{ $(\'Attach Reply + Send Gate\').item.json.customer_email }}','reason':'={{ $(\'Attach Reply + Send Gate\').item.json.human_review_reason }}','next_action':'={{ $(\'Attach Reply + Send Gate\').item.json.next_action }}','latest_message':'={{ $(\'Attach Reply + Send Gate\').item.json.normalized_customer_message }}','suggested_reply':'={{ $(\'Attach Reply + Send Gate\').item.json.reply_body }}','received_at':'={{ $(\'Attach Reply + Send Gate\').item.json.received_at }}','waiting_since':'={{ $now.toISO() }}','status':'OPEN'},'matchingColumns':['request_id'],'schema':col_schema(REVIEW_COLS,['request_id']),'attemptToConvertTypes':False,'convertFieldsToString':False},'options':{}})]
 # send gate main branch
-nodes += [node('AUTO SEND enabled + safe?','n8n-nodes-base.if',2.3,(2280,-80),{'conditions':{'options':{'caseSensitive':True,'leftValue':'','typeValidation':'strict','version':2},'conditions':[{'id':nid(),'leftValue':'={{ $(\'Attach Reply + Send Gate\').item.json.send_now }}','rightValue':True,'operator':{'type':'boolean','operation':'true','singleValue':True}}],'combinator':'and'},'options':{}})]
-nodes += [node('Reply in Same Gmail Thread','n8n-nodes-base.gmail',2.2,(2540,-180),{'operation':'reply','messageId':'={{ $(\'Attach Reply + Send Gate\').item.json.message_id }}','emailType':'text','message':'={{ $(\'Attach Reply + Send Gate\').item.json.reply_body }}','options':{'appendAttribution':False,'replyToSenderOnly':True}},retryOnFail=False,onError='continueErrorOutput')]
+nodes += [node('AUTO SEND enabled + safe?','n8n-nodes-base.if',2.2,(2280,-80),{'conditions':{'options':{'caseSensitive':True,'leftValue':'','typeValidation':'strict','version':2},'conditions':[{'id':nid(),'leftValue':'={{ $(\'Attach Reply + Send Gate\').item.json.send_now }}','rightValue':True,'operator':{'type':'boolean','operation':'true','singleValue':True}}],'combinator':'and'},'options':{}})]
+nodes += [gmail_http('Reply in Same Gmail Thread',(2540,-180),'POST','https://gmail.googleapis.com/gmail/v1/users/me/messages/send',"={{ {threadId: $('Attach Reply + Send Gate').item.json.thread_id, raw: $('Attach Reply + Send Gate').item.json.gmail_raw} }}",retryOnFail=False,onError='continueErrorOutput')]
 # After successful reply, update ledger reply_sent true
 sent_values=dict(proc_values);sent_values.update({'reply_sent':'true','delivery_state':'SENT'})
 nodes += [node('Confirm Reply Sent in Ledger','n8n-nodes-base.googleSheets',4.7,(2810,-220),{'operation':'appendOrUpdate','documentId':doc_locator(),'sheetName':sheet_locator('Processed_Messages'),'columns':{'mappingMode':'defineBelow','value':sent_values,'matchingColumns':['message_id'],'schema':col_schema(PROC_COLS,['message_id']),'attemptToConvertTypes':False,'convertFieldsToString':False},'options':{}},retryOnFail=True,maxTries=3,waitBetweenTries=2000)]
@@ -149,13 +182,12 @@ nodes += [node('Confirm Reply Sent in Ledger','n8n-nodes-base.googleSheets',4.7,
 nodes += [node('Build Send-Uncertain Review','n8n-nodes-base.code',2,(2810,-80),{'jsCode':"const x=$('Attach Reply + Send Gate').item.json;return [{json:{...x,status:'HUMAN_REVIEW',human_review_reason:'gmail_reply_failed_or_delivery_uncertain',next_action:'inspect_sent_mail_before_retry',delivery_state:'SEND_UNCERTAIN'}}];"})]
 nodes += [node('UPSERT Send-Uncertain Review','n8n-nodes-base.googleSheets',4.7,(3070,-80),{'operation':'appendOrUpdate','documentId':doc_locator(),'sheetName':sheet_locator('Human_Review'),'columns':{'mappingMode':'defineBelow','value':{'request_id':'={{ $json.request_id }}','thread_id':'={{ $json.thread_id }}','priority':'CRITICAL','customer_name':'={{ $json.customer_name }}','customer_email':'={{ $json.customer_email }}','reason':'={{ $json.human_review_reason }}','next_action':'={{ $json.next_action }}','latest_message':'={{ $json.normalized_customer_message }}','suggested_reply':'={{ $json.reply_body }}','received_at':'={{ $json.received_at }}','waiting_since':'={{ $now.toISO() }}','status':'OPEN'},'matchingColumns':['request_id'],'schema':col_schema(REVIEW_COLS,['request_id']),'attemptToConvertTypes':False,'convertFieldsToString':False},'options':{}})]
 # no-send draft path: mark read after persistence; for actual Localle demo enable flag, this path won't be used.
-nodes += [node('Mark Draft/Test Read','n8n-nodes-base.gmail',2.2,(2540,0),{'operation':'markAsRead','messageId':'={{ $(\'Attach Reply + Send Gate\').item.json.message_id }}'})]
-nodes += [node('Mark Replied Read','n8n-nodes-base.gmail',2.2,(3070,-220),{'operation':'markAsRead','messageId':'={{ $(\'Attach Reply + Send Gate\').item.json.message_id }}'})]
+nodes += [gmail_http('Mark Draft/Test Read',(2540,0),'POST',"={{ `https://gmail.googleapis.com/gmail/v1/users/me/messages/${$('Attach Reply + Send Gate').item.json.message_id}/modify` }}",'{"removeLabelIds":["UNREAD"]}')]
+nodes += [gmail_http('Mark Replied Read',(3070,-220),'POST',"={{ `https://gmail.googleapis.com/gmail/v1/users/me/messages/${$('Attach Reply + Send Gate').item.json.message_id}/modify` }}",'{"removeLabelIds":["UNREAD"]}')]
 # audit append nodes for terminal states
 nodes += [node('Audit Success','n8n-nodes-base.googleSheets',4.7,(3320,-220),{'operation':'append','documentId':doc_locator(),'sheetName':sheet_locator('Audit'),'columns':{'mappingMode':'defineBelow','value':{'timestamp':'={{ $now.toISO() }}','message_id':'={{ $(\'Attach Reply + Send Gate\').item.json.message_id }}','thread_id':'={{ $(\'Attach Reply + Send Gate\').item.json.thread_id }}','request_id':'={{ $(\'Attach Reply + Send Gate\').item.json.request_id }}','event':'REPLY_SENT','status':'={{ $(\'Attach Reply + Send Gate\').item.json.status }}','detail':'same-thread reply sent and message marked read','execution_id':'={{ $execution.id }}'},'matchingColumns':[],'schema':col_schema(AUD_COLS),'attemptToConvertTypes':False,'convertFieldsToString':False},'options':{}})]
 nodes += [node('Audit Draft','n8n-nodes-base.googleSheets',4.7,(2810,0),{'operation':'append','documentId':doc_locator(),'sheetName':sheet_locator('Audit'),'columns':{'mappingMode':'defineBelow','value':{'timestamp':'={{ $now.toISO() }}','message_id':'={{ $(\'Attach Reply + Send Gate\').item.json.message_id }}','thread_id':'={{ $(\'Attach Reply + Send Gate\').item.json.thread_id }}','request_id':'={{ $(\'Attach Reply + Send Gate\').item.json.request_id }}','event':'DRAFT_ONLY','status':'={{ $(\'Attach Reply + Send Gate\').item.json.status }}','detail':'auto-send disabled; reply generated but not sent','execution_id':'={{ $execution.id }}'},'matchingColumns':[],'schema':col_schema(AUD_COLS),'attemptToConvertTypes':False,'convertFieldsToString':False},'options':{}})]
 nodes += [node('Audit Send Uncertain','n8n-nodes-base.googleSheets',4.7,(3320,-80),{'operation':'append','documentId':doc_locator(),'sheetName':sheet_locator('Audit'),'columns':{'mappingMode':'defineBelow','value':{'timestamp':'={{ $now.toISO() }}','message_id':'={{ $(\'Attach Reply + Send Gate\').item.json.message_id }}','thread_id':'={{ $(\'Attach Reply + Send Gate\').item.json.thread_id }}','request_id':'={{ $(\'Attach Reply + Send Gate\').item.json.request_id }}','event':'SEND_UNCERTAIN','status':'HUMAN_REVIEW','detail':'Gmail reply failed/uncertain; blind resend suppressed','execution_id':'={{ $execution.id }}'},'matchingColumns':[],'schema':col_schema(AUD_COLS),'attemptToConvertTypes':False,'convertFieldsToString':False},'options':{}})]
-nodes += [sticky('99 — Activation gate',(2140,-620),'# Before enabling AUTO SEND\n1. Bind Gmail, Google Sheets and OpenAI credentials.\n2. Run the included Manual Replay Harness and regression suite.\n3. Send test emails from a separate mailbox.\n4. Verify same-thread replies + same-row updates.\n5. Confirm business facts with the owner.\n6. Change `auto_send_enabled` to `true` **only in Normalize Inbound**.\n\nIf Gmail reply returns an error, this workflow does **not** blindly resend; it routes to Human_Review because delivery may be uncertain.',640,480,4)]
 
 connections={}
 def conn(src,dst,src_index=0,typ='main'):
@@ -163,7 +195,10 @@ def conn(src,dst,src_index=0,typ='main'):
     while len(connections[src][typ])<=src_index: connections[src][typ].append([])
     connections[src][typ][src_index].append({'node':dst,'type':typ if typ!='main' else 'main','index':0})
 # main
-conn('Gmail Trigger','Normalize Inbound')
+conn('Gmail Trigger','List Unread Gmail Messages')
+conn('List Unread Gmail Messages','Expand Gmail Message References')
+conn('Expand Gmail Message References','Fetch Full Gmail Message')
+conn('Fetch Full Gmail Message','Normalize Inbound')
 conn('Normalize Inbound','Should Process?')
 # IF output 0=true,1=false
 conn('Should Process?','Lookup Processed Message',0)
@@ -177,15 +212,24 @@ conn('Was Reply Confirmed?','Mark Duplicate Read',0)
 conn('Was Reply Confirmed?','Build Recovery Review',1)
 conn('Build Recovery Review','Upsert Recovery Review')
 conn('Upsert Recovery Review','Mark Recovery Read')
-conn('Lookup Request by Thread','Extract Reservation')
+conn('Lookup Request by Thread','AI Provider is Ollama (Extraction)')
+conn('AI Provider is Ollama (Extraction)','Extract Reservation',0)
+conn('AI Provider is Ollama (Extraction)','OpenAI Extract Reservation',1)
 # AI aux
 connections['Extraction Model']={'ai_languageModel':[[{'node':'Extract Reservation','type':'ai_languageModel','index':0}]]}
 connections['Strict Extraction Schema']={'ai_outputParser':[[{'node':'Extract Reservation','type':'ai_outputParser','index':0}]]}
+connections['OpenAI Extraction Model']={'ai_languageModel':[[{'node':'OpenAI Extract Reservation','type':'ai_languageModel','index':0}]]}
+connections['OpenAI Strict Extraction Schema']={'ai_outputParser':[[{'node':'OpenAI Extract Reservation','type':'ai_outputParser','index':0}]]}
 conn('Extract Reservation','Merge + Validate + Decide')
+conn('OpenAI Extract Reservation','Merge + Validate + Decide')
 conn('Merge + Validate + Decide','UPSERT Request')
-conn('UPSERT Request','Render Customer Reply')
+conn('UPSERT Request','AI Provider is Ollama (Reply)')
+conn('AI Provider is Ollama (Reply)','Render Customer Reply',0)
+conn('AI Provider is Ollama (Reply)','OpenAI Render Customer Reply',1)
 connections['Reply Model']={'ai_languageModel':[[{'node':'Render Customer Reply','type':'ai_languageModel','index':0}]]}
-conn('Render Customer Reply','Attach Reply + Send Gate')
+connections['OpenAI Reply Model']={'ai_languageModel':[[{'node':'OpenAI Render Customer Reply','type':'ai_languageModel','index':0}]]}
+conn('Render Customer Reply','AI Provider is Ollama (Safety)')
+conn('OpenAI Render Customer Reply','AI Provider is Ollama (Safety)')
 conn('Attach Reply + Send Gate','Persist Event Ledger')
 # two side decisions from ledger; n8n main fanout allowed
 conn('Persist Event Ledger','AUTO SEND enabled + safe?')
@@ -202,7 +246,9 @@ conn('Build Send-Uncertain Review','UPSERT Send-Uncertain Review')
 conn('UPSERT Send-Uncertain Review','Audit Send Uncertain')
 conn('Mark Draft/Test Read','Audit Draft')
 
-workflow={'name':'Localle — AI Reservation Intake v1.0 (SAFE DEFAULT)','nodes':nodes,'connections':connections,'pinData':{},'active':False,'settings':{'executionOrder':'v1','saveManualExecutions':True,'callerPolicy':'workflowsFromSameOwner'},'versionId':str(uuid.uuid4()),'meta':{'templateCredsSetupCompleted':False},'tags':[]}
+# A stable n8n workflow identifier makes repeated CLI imports update this
+# workflow instead of silently creating a second inactive copy.
+workflow={'id':'LOCALLEOPTB2026A','name':'Localle — AI Reservation Intake v1.0 (SAFE DEFAULT)','nodes':nodes,'connections':connections,'pinData':{},'active':False,'settings':{'executionOrder':'v1','saveManualExecutions':True,'callerPolicy':'workflowsFromSameOwner'},'versionId':str(uuid.uuid4()),'meta':{'templateCredsSetupCompleted':False},'tags':[]}
 (ROOT/'n8n'/'localle_reservation_intake_v1.n8n.json').write_text(json.dumps(workflow,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 
 # Credential-free logic replay workflow: useful for reviewer/demo without touching mailbox.

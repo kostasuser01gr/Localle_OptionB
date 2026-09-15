@@ -5,6 +5,8 @@ Release: **v2.0 FINAL / safe default**
 
 This package implements the Localle take-home as a small reservation-intake system rather than a simple email parser.
 
+Before activation, create the Gmail label `localle-reservation-intake` and assign it only to messages intended for this workflow. The workflow intentionally does not poll every unread Inbox message.
+
 ## What it does
 
 `Gmail → normalize → duplicate/recovery guard → AI structured extraction → deterministic validation/state merge → Google Sheets UPSERT → reply-plan generation → multilingual reply render → semantic verifier → deterministic reply guard → safe send gate → same-thread Gmail reply → audit / human review`

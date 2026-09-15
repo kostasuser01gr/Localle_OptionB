@@ -1,5 +1,8 @@
 // Deterministic business engine. LLM interprets; this node decides.
-const inbound=$('Apply Runtime Config').item.json;
+// The provider adapter is deliberately upstream of this deterministic engine.
+// Keep the selected provider as opaque runtime metadata: business decisions must
+// never depend on whether Ollama or OpenAI produced the normalized contract.
+const inbound=$('Apply AI Provider Config').item.json;
 const extractedRaw=$json.output ?? $json;
 const incoming=structuredClone(extractedRaw);
 const existingRow=$('Lookup Request by Thread').item.json || {};

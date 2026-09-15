@@ -23,4 +23,10 @@ const send=Boolean(core.runtime?.auto_send_enabled)&&logicAllows&&safe&&core.rep
 const reviewRequired=core.status==='HUMAN_REVIEW'||!safe;
 const effectiveReason=[core.human_review_reason||'',...reasons].filter(Boolean).join(',');
 const effectiveNext=!safe?'review_reply_before_send':core.next_action;
-return [{json:{...core,reply_body:reply,reply_preview:reply.slice(0,400),reply_safe:safe,reply_safety_reasons:reasons,review_required:reviewRequired,effective_human_review_reason:effectiveReason,effective_next_action:effectiveNext,send_now:send,delivery_state:send?'PERSISTED_PENDING_SEND':(!safe?'HELD_REPLY_SAFETY':(core.runtime?.auto_send_enabled?'HELD':'DRAFT_ONLY'))}}];
+const subject=/^re:/i.test(String(core.subject||''))?String(core.subject):`Re: ${String(core.subject||'Reservation enquiry')}`;
+const refs=[String(core.references||'').trim(),String(core.rfc_message_id||'').trim()].filter(Boolean).join(' ').trim();
+const headers=[`To: ${String(core.from||'').replace(/[\r\n]/g,' ')}`,`Subject: ${subject.replace(/[\r\n]/g,' ')}`,'MIME-Version: 1.0','Content-Type: text/plain; charset=UTF-8'];
+if(core.rfc_message_id)headers.push(`In-Reply-To: ${String(core.rfc_message_id).replace(/[\r\n]/g,' ')}`);
+if(refs)headers.push(`References: ${refs.replace(/[\r\n]/g,' ')}`);
+const gmail_raw=Buffer.from(`${headers.join('\r\n')}\r\n\r\n${reply}`,'utf8').toString('base64url');
+return [{json:{...core,reply_body:reply,reply_preview:reply.slice(0,400),reply_safe:safe,reply_safety_reasons:reasons,review_required:reviewRequired,effective_human_review_reason:effectiveReason,effective_next_action:effectiveNext,gmail_raw,send_now:send,delivery_state:send?'PERSISTED_PENDING_SEND':(!safe?'HELD_REPLY_SAFETY':(core.runtime?.auto_send_enabled?'HELD':'DRAFT_ONLY'))}}];

@@ -15,19 +15,37 @@ class N8nContractTests(unittest.TestCase):
         code=self.nodes['Normalize Inbound']['parameters']['jsCode']
         self.assertIn('auto_send_enabled:false',code.replace(' ',''))
 
-    def test_current_node_versions(self):
-        self.assertEqual(self.nodes['Gmail Trigger']['typeVersion'],1.4)
-        self.assertEqual(self.nodes['Reply in Same Gmail Thread']['typeVersion'],2.2)
-        self.assertEqual(self.nodes['UPSERT Request']['typeVersion'],4.7)
-        self.assertEqual(self.nodes['Extract Reservation']['typeVersion'],1.9)
-        self.assertEqual(self.nodes['Extraction Model']['typeVersion'],1.3)
-        self.assertEqual(self.nodes['Strict Extraction Schema']['typeVersion'],1.3)
+    def test_workflow_has_stable_import_identifier(self):
+        self.assertEqual(self.w.get('id'), 'LOCALLEOPTB2026A')
 
-    def test_trigger_reads_full_body_and_unread_only(self):
-        p=self.nodes['Gmail Trigger']['parameters']
-        self.assertFalse(p['simple'])
-        self.assertEqual(p['filters']['readStatus'],'unread')
-        self.assertIn('in:inbox',p['filters']['q'])
+    def test_node_versions_are_supported_by_pinned_n8n_1_117_3_runtime(self):
+        # These are the exact registered versioned-node keys in n8n 1.117.3.
+        # A missing key returns undefined from getByNameAndVersion(), which then
+        # crashes the execution engine on nodeType.execute.
+        self.assertEqual(self.nodes['Gmail Trigger']['typeVersion'],1.2)
+        self.assertEqual(self.nodes['Reply in Same Gmail Thread']['typeVersion'],4.3)
+        self.assertEqual(self.nodes['UPSERT Request']['typeVersion'],4.7)
+        self.assertEqual(self.nodes['Extract Reservation']['typeVersion'],1.7)
+        self.assertEqual(self.nodes['Extraction Model']['typeVersion'],1)
+        self.assertEqual(self.nodes['Strict Extraction Schema']['typeVersion'],1.3)
+        for node in self.w['nodes']:
+            if node['type'] == 'n8n-nodes-base.if':
+                self.assertEqual(node['typeVersion'], 2.2, node['name'])
+            if node['type'] == 'n8n-nodes-base.gmail':
+                self.assertEqual(node['typeVersion'], 2.1, node['name'])
+            if node['type'] == '@n8n/n8n-nodes-langchain.chainLlm':
+                self.assertEqual(node['typeVersion'], 1.7, node['name'])
+            if node['type'] == '@n8n/n8n-nodes-langchain.lmChatOllama':
+                self.assertEqual(node['typeVersion'], 1, node['name'])
+            if node['type'] == '@n8n/n8n-nodes-langchain.lmChatOpenAi':
+                self.assertEqual(node['typeVersion'], 1.2, node['name'])
+
+    def test_least_privilege_gmail_boundary_polls_only_the_dedicated_label_and_fetches_full_body(self):
+        self.assertEqual(self.nodes['Gmail Trigger']['type'],'n8n-nodes-base.scheduleTrigger')
+        listed=self.nodes['List Unread Gmail Messages']['parameters']
+        self.assertIn('label%3Alocalle-reservation-intake%20is%3Aunread',listed['url'])
+        self.assertEqual(listed['genericAuthType'],'oAuth2Api')
+        self.assertIn('Fetch Full Gmail Message',self.nodes)
 
     def test_ai_extractor_has_no_tools(self):
         c=self.w['connections']
@@ -37,6 +55,35 @@ class N8nContractTests(unittest.TestCase):
         for src, groups in c.items():
             all_types.extend(groups.keys())
         self.assertNotIn('ai_tool',all_types)
+
+    def test_provider_adapters_keep_ollama_test_mode_and_openai_deployment_mode_isolated(self):
+        ollama=[self.nodes[name] for name in ('Extraction Model','Reply Model','Reply Safety Model')]
+        openai=[self.nodes[name] for name in ('OpenAI Extraction Model','OpenAI Reply Model','OpenAI Reply Safety Model')]
+        self.assertTrue(all(n['type']=='@n8n/n8n-nodes-langchain.lmChatOllama' for n in ollama))
+        self.assertTrue(all(n['parameters']['model']=='llama3.1:8b' for n in ollama))
+        self.assertTrue(all(n['type']=='@n8n/n8n-nodes-langchain.lmChatOpenAi' for n in openai))
+        self.assertTrue(all('credentials' not in n for n in ollama+openai))
+
+    def test_provider_selection_routes_only_to_the_selected_adapter(self):
+        c=self.w['connections']
+        self.assertEqual(c['AI Provider is Ollama (Extraction)']['main'][0][0]['node'],'Extract Reservation')
+        self.assertEqual(c['AI Provider is Ollama (Extraction)']['main'][1][0]['node'],'OpenAI Extract Reservation')
+        self.assertEqual(c['AI Provider is Ollama (Reply)']['main'][0][0]['node'],'Render Customer Reply')
+        self.assertEqual(c['AI Provider is Ollama (Reply)']['main'][1][0]['node'],'OpenAI Render Customer Reply')
+        self.assertEqual(c['AI Provider is Ollama (Safety)']['main'][0][0]['node'],'Verify Reply Safety')
+        self.assertEqual(c['AI Provider is Ollama (Safety)']['main'][1][0]['node'],'OpenAI Verify Reply Safety')
+        config=self.nodes['Apply AI Provider Config']['parameters']['jsCode']
+        self.assertIn("raw==='ollama'?'ollama':'openai'",config)
+
+    def test_provider_adapters_share_exact_contract_and_cannot_bypass_safety(self):
+        self.assertEqual(self.nodes['Extract Reservation']['parameters']['text'],self.nodes['OpenAI Extract Reservation']['parameters']['text'])
+        self.assertEqual(self.nodes['Strict Extraction Schema']['parameters']['inputSchema'],self.nodes['OpenAI Strict Extraction Schema']['parameters']['inputSchema'])
+        self.assertEqual(self.nodes['Render Customer Reply']['parameters']['text'],self.nodes['OpenAI Render Customer Reply']['parameters']['text'])
+        c=self.w['connections']
+        self.assertEqual(c['Extract Reservation']['main'][0][0]['node'],'Merge + Validate + Decide')
+        self.assertEqual(c['OpenAI Extract Reservation']['main'][0][0]['node'],'Merge + Validate + Decide')
+        self.assertEqual(c['Verify Reply Safety']['main'][0][0]['node'],'Attach Reply + Send Gate')
+        self.assertEqual(c['OpenAI Verify Reply Safety']['main'][0][0]['node'],'Attach Reply + Send Gate')
 
     def test_business_entity_and_event_matching_keys_are_locked(self):
         self.assertEqual(self.nodes['UPSERT Request']['parameters']['columns']['matchingColumns'], ['thread_id'])
@@ -85,12 +132,12 @@ class N8nContractTests(unittest.TestCase):
             p=subprocess.run(['node','--check',path],capture_output=True,text=True)
             self.assertEqual(p.returncode,0,f"{n['name']}: {p.stderr}")
 
-    def test_reply_node_is_same_thread_reply_not_new_send(self):
+    def test_reply_node_is_same_thread_rest_send_not_new_message(self):
         p=self.nodes['Reply in Same Gmail Thread']['parameters']
-        self.assertEqual(p['operation'],'reply')
-        self.assertEqual(p['messageId'],"={{ $('Attach Reply + Send Gate').item.json.message_id }}")
-        self.assertFalse(p['options']['appendAttribution'])
-        self.assertTrue(p['options']['replyToSenderOnly'])
+        self.assertEqual(p['url'],'https://gmail.googleapis.com/gmail/v1/users/me/messages/send')
+        self.assertEqual(p['genericAuthType'],'oAuth2Api')
+        self.assertIn('threadId',p['jsonBody'])
+        self.assertIn('gmail_raw',p['jsonBody'])
 
 class N8nDefenseInDepthTests(unittest.TestCase):
     @classmethod
@@ -99,14 +146,13 @@ class N8nDefenseInDepthTests(unittest.TestCase):
         cls.nodes={n['name']:n for n in cls.w['nodes']}
 
     def test_reply_has_independent_semantic_verifier(self):
-        self.assertIn('Verify Reply Safety',self.nodes)
-        self.assertIn('Reply Safety Model',self.nodes)
-        self.assertIn('Reply Safety Schema',self.nodes)
+        for name in ('Verify Reply Safety','Reply Safety Model','Reply Safety Schema','OpenAI Verify Reply Safety','OpenAI Reply Safety Model','OpenAI Reply Safety Schema'):
+            self.assertIn(name,self.nodes)
         self.assertIn('ai_languageModel',self.w['connections']['Reply Safety Model'])
         self.assertIn('ai_outputParser',self.w['connections']['Reply Safety Schema'])
         render=self.w['connections']['Render Customer Reply']['main']
-        self.assertEqual(render[0][0]['node'],'Verify Reply Safety')
-        self.assertEqual(render[1][0]['node'],'Verify Reply Safety')
+        self.assertEqual(render[0][0]['node'],'AI Provider is Ollama (Safety)')
+        self.assertEqual(render[1][0]['node'],'AI Provider is Ollama (Safety)')
         verifier=self.w['connections']['Verify Reply Safety']['main']
         self.assertEqual(verifier[0][0]['node'],'Attach Reply + Send Gate')
         self.assertEqual(verifier[1][0]['node'],'Attach Reply + Send Gate')
@@ -136,7 +182,7 @@ class N8nDefenseInDepthTests(unittest.TestCase):
     def test_only_gmail_send_node_can_emit_customer_reply_and_has_no_retry(self):
         send_nodes=[]
         for n in self.w['nodes']:
-            if n['type']=='n8n-nodes-base.gmail' and n['parameters'].get('operation') in {'send','reply'}:
+            if n['type']=='n8n-nodes-base.httpRequest' and n['parameters'].get('url')=='https://gmail.googleapis.com/gmail/v1/users/me/messages/send':
                 send_nodes.append(n)
         self.assertEqual([n['name'] for n in send_nodes],['Reply in Same Gmail Thread'])
         self.assertFalse(send_nodes[0].get('retryOnFail',False))
@@ -155,6 +201,8 @@ class RuntimeConfigGateTests(unittest.TestCase):
     def test_auto_send_is_loaded_from_config_sheet_fail_closed(self):
         self.assertIn('Lookup AUTO SEND Config',self.nodes)
         self.assertIn('Apply Runtime Config',self.nodes)
+        self.assertIn('Lookup AI Provider Config',self.nodes)
+        self.assertIn('Apply AI Provider Config',self.nodes)
         lookup=self.nodes['Lookup AUTO SEND Config']
         self.assertEqual(lookup['parameters']['sheetName']['value'],'Config')
         vals=lookup['parameters']['filtersUI']['values']
@@ -169,6 +217,9 @@ class RuntimeConfigGateTests(unittest.TestCase):
         c=self.w['connections']
         self.assertEqual(c['Normalize Inbound']['main'][0][0]['node'],'Lookup AUTO SEND Config')
         self.assertEqual(c['Lookup AUTO SEND Config']['main'][0][0]['node'],'Apply Runtime Config')
-        self.assertEqual(c['Apply Runtime Config']['main'][0][0]['node'],'Should Process?')
+        self.assertEqual(c['Apply Runtime Config']['main'][0][0]['node'],'Lookup AI Provider Config')
+        self.assertEqual(c['Lookup AI Provider Config']['main'][0][0]['node'],'Apply AI Provider Config')
+        self.assertEqual(c['Apply AI Provider Config']['main'][0][0]['node'],'Should Process?')
         merge=self.nodes['Merge + Validate + Decide']['parameters']['jsCode']
-        self.assertIn("$('Apply Runtime Config').item.json",merge)
+        self.assertIn("$('Apply AI Provider Config').item.json",merge)
+        self.assertIn('return [{json:{...inbound,',merge)

@@ -16,7 +16,8 @@ start=time.time()
 
 def run(cmd, name, *, env=None):
     p=subprocess.run(cmd,cwd=ROOT,text=True,capture_output=True,env=env)
-    (EVIDENCE/f'{name}.txt').write_text(p.stdout+'\n'+p.stderr,encoding='utf-8')
+    output='\n'.join(part.rstrip('\n') for part in (p.stdout, p.stderr) if part)
+    (EVIDENCE/f'{name}.txt').write_text(output+'\n',encoding='utf-8')
     if p.returncode:
         print(p.stdout)
         print(p.stderr,file=sys.stderr)
@@ -78,7 +79,16 @@ secret_patterns=[
 ]
 secret_hits=[]
 for p in ROOT.rglob('*'):
-    if not p.is_file() or p.name=='MANIFEST.sha256' or p.suffix in {'.pyc','.db'} or '__pycache__' in p.parts:
+    if (
+        not p.is_file()
+        or p.name == 'MANIFEST.sha256'
+        or p.suffix in {'.pyc', '.db'}
+        or '__pycache__' in p.parts
+        or '.git' in p.parts
+        or '.venv' in p.parts
+        or any(part.startswith('.n8n') for part in p.parts)
+        or '.playwright-cli' in p.parts
+    ):
         continue
     try: text=p.read_text(encoding='utf-8')
     except UnicodeDecodeError: continue
@@ -137,7 +147,7 @@ report={
     'auto_send_control':'Config Sheet fail-closed',
     'elapsed_seconds':round(time.time()-start,3),
     'limitations':[
-        'Generated n8n JSON is statically validated but not executed inside a live n8n runtime in this environment.',
+        'The workflow is registry-audited and has passed clean import, activation, deactivation, and reactivation in isolated n8n 1.117.3. Controlled Gmail, Google Sheets, and OpenAI E2E remains pending provider credentials.',
         'Google Sheets event idempotency is best-effort under simultaneous distributed executions; a transactional store is recommended for hard exactly-once production semantics.',
         'No real availability, live quote, or fleet source is connected; the workflow must never invent these facts.'
     ]
@@ -186,7 +196,7 @@ These are synthetic workload assumptions, not observed Localle production metric
 
 ## External gate that remains intentionally unclaimed
 
-This environment does not contain an n8n runtime. The export, node graph, expressions, code, schemas and contracts are validated, but an actual import/execution against the target n8n instance with bound Gmail/Google/OpenAI credentials must still be performed as a controlled test before real customer auto-send.
+The export passed a clean isolated n8n 1.117.3 import and activation/deactivation/re-activation check. Controlled Gmail, Google Sheets, and OpenAI credentials are not present, so provider-backed execution and the controlled end-to-end matrix must still be performed before real customer auto-send.
 
 ## Production boundary
 
@@ -212,7 +222,8 @@ for p in sorted(ROOT.rglob('*')):
         and p.suffix != '.zip'
         and '.git' not in p.parts
         and '.venv' not in p.parts
-        and '.n8n-runtime' not in p.parts
+        and not any(part.startswith('.n8n') for part in p.parts)
+        and '.playwright-cli' not in p.parts
     ):
         files.append(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(ROOT)}")
 (ROOT/'MANIFEST.sha256').write_text('\n'.join(files)+'\n',encoding='utf-8')

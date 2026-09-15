@@ -1,0 +1,127 @@
+{
+  "name": "Localle — Ollama Zero-Cost Diagnostic (credential-free)",
+  "id": "LOCALLEOLLAMADIAG2026",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "nodes": [
+    {
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -620,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "build-local-probe",
+      "name": "Build Local Probe",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        -100
+      ],
+      "parameters": {
+        "jsCode": "return [{json:{\n  prompt:'Return JSON only: {\"language\":\"en\",\"customer_name\":\"Ada Test\",\"phone\":\"+306900000000\",\"pickup\":{\"date_text\":\"20 July 2027\"},\"return\":{\"date_text\":\"23 July 2027\"},\"vehicle\":{\"category\":\"ECONOMY\"},\"ambiguities\":[],\"confidence\":0.95}',\n  model:'llama3.1:8b'\n}}];"
+      }
+    },
+    {
+      "id": "ollama-http",
+      "name": "Generate with Local Ollama",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -160,
+        -100
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:11434/api/generate",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "{\"model\": \"llama3.1:8b\", \"prompt\": \"Return JSON only: {\\\"language\\\":\\\"en\\\",\\\"customer_name\\\":\\\"Ada Test\\\",\\\"phone\\\":\\\"+306900000000\\\",\\\"pickup\\\":{\\\"date_text\\\":\\\"20 July 2027\\\"},\\\"return\\\":{\\\"date_text\\\":\\\"23 July 2027\\\"},\\\"vehicle\\\":{\\\"category\\\":\\\"ECONOMY\\\"},\\\"ambiguities\\\":[],\\\"confidence\\\":0.95}\", \"format\": \"json\", \"stream\": false, \"options\": {\"temperature\": 0, \"num_predict\": 240}}",
+        "options": {
+          "timeout": 90000
+        }
+      }
+    },
+    {
+      "id": "strictly-validate-local-response",
+      "name": "Strictly Validate Local Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        90,
+        -100
+      ],
+      "parameters": {
+        "jsCode": "const raw=String($json.response??'');\nlet parsed;\ntry { parsed=JSON.parse(raw); } catch { throw new Error('OLLAMA_SCHEMA_REJECTED: malformed JSON'); }\nconst required=['language','customer_name','phone','pickup','return','vehicle','ambiguities','confidence'];\nconst missing=required.filter((key)=>parsed[key]===undefined||parsed[key]===null||parsed[key]==='');\nif(missing.length || typeof parsed.pickup!=='object' || typeof parsed.return!=='object' || typeof parsed.vehicle!=='object' || !Array.isArray(parsed.ambiguities) || Number(parsed.confidence)<0 || Number(parsed.confidence)>1) {\n  throw new Error('OLLAMA_SCHEMA_REJECTED: '+(missing.join(',')||'invalid field shape'));\n}\nreturn [{json:{diagnostic:'PASS',model:$json.model??'llama3.1:8b',provider:'ollama',contract:parsed,timeout_ms:90000}}];"
+      }
+    },
+    {
+      "id": "reject-malformed-response",
+      "name": "Reject Malformed Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        140
+      ],
+      "parameters": {
+        "jsCode": "const deliberatelyMalformed='{not valid JSON';\nlet rejected=false;\ntry { JSON.parse(deliberatelyMalformed); } catch { rejected=true; }\nif (!rejected) throw new Error('Malformed-response guard unexpectedly accepted invalid JSON');\nreturn [{json:{diagnostic:'PASS',malformed_response_rejected:true,provider:'ollama'}}];"
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Local Probe",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Reject Malformed Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Local Probe": {
+      "main": [
+        [
+          {
+            "node": "Generate with Local Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate with Local Ollama": {
+      "main": [
+        [
+          {
+            "node": "Strictly Validate Local Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": ""
+  },
+  "tags": []
+}

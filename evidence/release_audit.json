@@ -1,7 +1,7 @@
 {
   "result": "PASS",
-  "workflow_nodes": 48,
-  "main_reachable_execution_nodes": 40,
+  "workflow_nodes": 61,
+  "main_reachable_execution_nodes": 51,
   "unique_customer_send_nodes": 1,
   "credentials_embedded": false,
   "ships_active": false,

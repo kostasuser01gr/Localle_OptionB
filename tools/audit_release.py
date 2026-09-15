@@ -46,6 +46,7 @@ def main():
                     seen.add(dst);q.append(dst)
     aux_types={
         '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+        '@n8n/n8n-nodes-langchain.lmChatOllama',
         '@n8n/n8n-nodes-langchain.outputParserStructured',
         'n8n-nodes-base.stickyNote',
     }
@@ -61,7 +62,7 @@ def main():
         assert groups, f"AI auxiliary node is unattached: {n['name']}"
 
     # Exactly one customer-email send/reply action, and it is guarded.
-    sends=[n for n in w['nodes'] if n['type']=='n8n-nodes-base.gmail' and n['parameters'].get('operation') in {'reply','send'}]
+    sends=[n for n in w['nodes'] if n['type']=='n8n-nodes-base.httpRequest' and n['parameters'].get('url')=='https://gmail.googleapis.com/gmail/v1/users/me/messages/send']
     assert [n['name'] for n in sends]==['Reply in Same Gmail Thread']
     send=sends[0]
     assert send.get('retryOnFail',False) is False

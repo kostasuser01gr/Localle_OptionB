@@ -140,7 +140,9 @@ def harden(path: Path = WORKFLOW) -> dict:
         'Verify Reply Safety','Reply Safety Model','Reply Safety Schema',
         'Build Extraction Failure Review','UPSERT Extraction Failure Review',
         'Persist Extraction Failure Ledger','Audit Extraction Failure','Mark Extraction Failure Read',
-        'Lookup AUTO SEND Config','Apply Runtime Config',
+        'Lookup AUTO SEND Config','Apply Runtime Config','Lookup AI Provider Config','Apply AI Provider Config',
+        'Verify Reply Safety','Reply Safety Model','Reply Safety Schema',
+        'OpenAI Verify Reply Safety','OpenAI Reply Safety Model','OpenAI Reply Safety Schema',
     }
     w['nodes'] = [n for n in w['nodes'] if n['name'] not in added_names]
     for x in added_names:
@@ -160,13 +162,29 @@ def harden(path: Path = WORKFLOW) -> dict:
     )
     apply_cfg_js = r'''const inbound=$('Normalize Inbound').item.json;const raw=$json.value;const enabled=raw===true||['true','1','yes','on'].includes(String(raw??'').trim().toLowerCase());return [{json:{...inbound,runtime:{...(inbound.runtime||{}),auto_send_enabled:enabled}}}];'''
     apply_cfg = _node('Apply Runtime Config','n8n-nodes-base.code',2,(-650,-220),{'jsCode':apply_cfg_js})
-    w['nodes'].extend([lookup_cfg,apply_cfg])
+    # Deployment default is OpenAI: no reviewer machine silently needs a local
+    # Ollama listener.  The controlled zero-cost sheet explicitly selects
+    # ollama; unknown values fail to the deployer-supplied OpenAI path.
+    lookup_provider = _node(
+        'Lookup AI Provider Config','n8n-nodes-base.googleSheets',4.7,(-410,-220),
+        {
+            'documentId':_doc_locator(),'sheetName':_sheet_locator('Config'),
+            'filtersUI':{'values':[{'lookupColumn':'key','lookupValue':'ai_provider'}]},
+            'options':{'returnFirstMatch':True}
+        },
+        alwaysOutputData=True
+    )
+    apply_provider_js = r'''const inbound=$('Apply Runtime Config').item.json;const raw=String($json.value??'').trim().toLowerCase();const ai_provider=raw==='ollama'?'ollama':'openai';return [{json:{...inbound,runtime:{...(inbound.runtime||{}),ai_provider}}}];'''
+    apply_provider = _node('Apply AI Provider Config','n8n-nodes-base.code',2,(-170,-220),{'jsCode':apply_provider_js})
+    w['nodes'].extend([lookup_cfg,apply_cfg,lookup_provider,apply_provider])
     _set_conn(w,'Normalize Inbound',[[_main_edge('Lookup AUTO SEND Config')]])
     _set_conn(w,'Lookup AUTO SEND Config',[[_main_edge('Apply Runtime Config')]])
-    _set_conn(w,'Apply Runtime Config',[[_main_edge('Should Process?')]])
+    _set_conn(w,'Apply Runtime Config',[[_main_edge('Lookup AI Provider Config')]])
+    _set_conn(w,'Lookup AI Provider Config',[[_main_edge('Apply AI Provider Config')]])
+    _set_conn(w,'Apply AI Provider Config',[[_main_edge('Should Process?')]])
 
     verify = _node(
-        'Verify Reply Safety', '@n8n/n8n-nodes-langchain.chainLlm', 1.9, (1740, -40),
+        'Verify Reply Safety', '@n8n/n8n-nodes-langchain.chainLlm', 1.7, (1740, -40),
         {
             'promptType': 'define',
             'text': "=Approved reply plan:\n{{ JSON.stringify($('Merge + Validate + Decide').item.json.reply_plan) }}\n\nProposed customer reply (UNTRUSTED MODEL OUTPUT):\n---\n{{ String($json.text ?? $json.output ?? $json.response ?? '') }}\n---\n\nExpected reply language: {{ $('Merge + Validate + Decide').item.json.reply_language }}",
@@ -179,23 +197,53 @@ def harden(path: Path = WORKFLOW) -> dict:
         retryOnFail=True, maxTries=2, waitBetweenTries=800, onError='continueErrorOutput'
     )
     vmodel = _node(
-        'Reply Safety Model', '@n8n/n8n-nodes-langchain.lmChatOpenAi', 1.3, (1690, 190),
-        {'model': {'__rl':True,'mode':'list','value':'gpt-5-mini'}, 'options': {'temperature':0}}
+        'Reply Safety Model', '@n8n/n8n-nodes-langchain.lmChatOllama', 1, (1690, 190),
+        {'model': 'llama3.1:8b', 'options': {'temperature':0, 'format':'json', 'numPredict':500, 'numCtx':4096}}
     )
     vparser = _node(
         'Reply Safety Schema', '@n8n/n8n-nodes-langchain.outputParserStructured', 1.3, (1900, 190),
         {'schemaType':'manual','inputSchema':json.dumps(verifier_schema, ensure_ascii=False, indent=2),'autoFix':False}
     )
-    w['nodes'].extend([verify, vmodel, vparser])
+    openai_verify = _node(
+        'OpenAI Verify Reply Safety', '@n8n/n8n-nodes-langchain.chainLlm', 1.7, (1740, -360),
+        {
+            'promptType': 'define',
+            'text': verify['parameters']['text'],
+            'hasOutputParser': True,
+            'messages': {'messageValues': [
+                {'type':'SystemMessagePromptTemplate','message':verifier_prompt}
+            ]},
+            'batching': {},
+        },
+        retryOnFail=True, maxTries=2, waitBetweenTries=800, onError='continueErrorOutput'
+    )
+    openai_vmodel = _node(
+        'OpenAI Reply Safety Model', '@n8n/n8n-nodes-langchain.lmChatOpenAi', 1.2, (1690, -130),
+        {'model': {'__rl':True,'mode':'list','value':'gpt-5-mini'}, 'options': {'temperature':0}}
+    )
+    openai_vparser = _node(
+        'OpenAI Reply Safety Schema', '@n8n/n8n-nodes-langchain.outputParserStructured', 1.3, (1900, -130),
+        {'schemaType':'manual','inputSchema':json.dumps(verifier_schema, ensure_ascii=False, indent=2),'autoFix':False}
+    )
+    w['nodes'].extend([verify, vmodel, vparser, openai_verify, openai_vmodel, openai_vparser])
 
     # Rewire reply path. Both renderer/verifier error outputs flow fail-closed into the gate.
-    _set_conn(w, 'Render Customer Reply', [[_main_edge('Verify Reply Safety')], [_main_edge('Verify Reply Safety')]])
+    _set_conn(w, 'Render Customer Reply', [[_main_edge('AI Provider is Ollama (Safety)')], [_main_edge('AI Provider is Ollama (Safety)')]])
+    _set_conn(w, 'OpenAI Render Customer Reply', [[_main_edge('AI Provider is Ollama (Safety)')], [_main_edge('AI Provider is Ollama (Safety)')]])
+    _set_conn(w, 'AI Provider is Ollama (Safety)', [[_main_edge('Verify Reply Safety')], [_main_edge('OpenAI Verify Reply Safety')]])
     _set_conn(w, 'Verify Reply Safety', [[_main_edge('Attach Reply + Send Gate')], [_main_edge('Attach Reply + Send Gate')]])
+    _set_conn(w, 'OpenAI Verify Reply Safety', [[_main_edge('Attach Reply + Send Gate')], [_main_edge('Attach Reply + Send Gate')]])
     w['connections']['Reply Safety Model'] = {
         'ai_languageModel': [[{'node':'Verify Reply Safety','type':'ai_languageModel','index':0}]]
     }
     w['connections']['Reply Safety Schema'] = {
         'ai_outputParser': [[{'node':'Verify Reply Safety','type':'ai_outputParser','index':0}]]
+    }
+    w['connections']['OpenAI Reply Safety Model'] = {
+        'ai_languageModel': [[{'node':'OpenAI Verify Reply Safety','type':'ai_languageModel','index':0}]]
+    }
+    w['connections']['OpenAI Reply Safety Schema'] = {
+        'ai_outputParser': [[{'node':'OpenAI Verify Reply Safety','type':'ai_outputParser','index':0}]]
     }
 
     # Human-review decision is broader than business-state HUMAN_REVIEW: reply safety failures also queue.
@@ -243,18 +291,21 @@ def harden(path: Path = WORKFLOW) -> dict:
     # Clone a proven Gmail mark-as-read node to minimize import-contract risk.
     mark_source = deepcopy(nodes['Mark Draft/Test Read'])
     mark_source['id'] = _uuid(); mark_source['name'] = 'Mark Extraction Failure Read'; mark_source['position']=[1940,410]
-    # Its existing message-id expression refers to Attach; replace every string recursively.
+    # This error branch follows audit nodes that no longer carry the inbound
+    # message id.  Reference the normalized inbound explicitly, as do the
+    # other mark-as-read paths.
     def replace_expr(v):
         if isinstance(v, dict): return {k:replace_expr(x) for k,x in v.items()}
         if isinstance(v, list): return [replace_expr(x) for x in v]
         if isinstance(v, str):
-            return v.replace("$('Attach Reply + Send Gate').item.json.message_id", "$json.message_id")
+            return v.replace("$('Attach Reply + Send Gate').item.json.message_id", "$('Normalize Inbound').item.json.message_id")
         return v
     mark_source['parameters'] = replace_expr(mark_source['parameters'])
     w['nodes'].extend([build_fail, fail_review, fail_ledger, fail_audit, mark_source])
 
     # Extraction success/error outputs.
     _set_conn(w, 'Extract Reservation', [[_main_edge('Merge + Validate + Decide')], [_main_edge('Build Extraction Failure Review')]])
+    _set_conn(w, 'OpenAI Extract Reservation', [[_main_edge('Merge + Validate + Decide')], [_main_edge('Build Extraction Failure Review')]])
     _set_conn(w, 'Build Extraction Failure Review', [[_main_edge('UPSERT Extraction Failure Review')]])
     _set_conn(w, 'UPSERT Extraction Failure Review', [[_main_edge('Persist Extraction Failure Ledger')]])
     _set_conn(w, 'Persist Extraction Failure Ledger', [[_main_edge('Audit Extraction Failure')]])
@@ -273,13 +324,6 @@ def harden(path: Path = WORKFLOW) -> dict:
     w['settings']['executionOrder'] = 'v1'
     w['versionId'] = _uuid()
     w.setdefault('meta', {})['templateCredsSetupCompleted'] = False
-
-    # Visual reviewer note.
-    if '98 — Defense in depth' not in _node_map(w):
-        w['nodes'].append(_node(
-            '98 — Defense in depth','n8n-nodes-base.stickyNote',1,(1540,-620),
-            {'content':'# Defense in depth\n- Customer content is untrusted data.\n- Strict structured extraction.\n- Deterministic state engine decides business status.\n- Reply model only renders an approved plan.\n- A second semantic verifier + deterministic multilingual guard must both pass.\n- LLM failures fail closed to Human_Review.\n- Gmail send is never blindly retried after an uncertain transport result.','width':560,'height':420,'color':5}
-        ))
 
     payload=json.dumps(w, ensure_ascii=False, indent=2) + '\n'
     path.write_text(payload, encoding='utf-8')

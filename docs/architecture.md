@@ -26,7 +26,7 @@ The system deliberately separates interpretation from authority.
 ## End-to-end flow
 
 ```text
-Gmail Trigger (unread inbox)
+Gmail Trigger (unread messages bearing the dedicated `localle-reservation-intake` label)
   ↓
 Normalize Inbound
   ├─ strip quoted history/signature noise

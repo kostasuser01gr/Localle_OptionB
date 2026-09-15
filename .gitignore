@@ -5,4 +5,6 @@ __pycache__/
 .env
 .env.*
 .venv/
-.n8n-runtime/
+.n8n*/
+.playwright-cli/
+output/playwright/

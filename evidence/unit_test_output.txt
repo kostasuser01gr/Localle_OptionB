@@ -31,17 +31,22 @@ test_google_sheet_mapping_columns_exist (tests.test_live_sheet_contract.LiveShee
 test_live_contract_sheet_id_matches_workflow (tests.test_live_sheet_contract.LiveSheetContractTests.test_live_contract_sheet_id_matches_workflow) ... ok
 test_required_runtime_tables_are_present (tests.test_live_sheet_contract.LiveSheetContractTests.test_required_runtime_tables_are_present) ... ok
 test_local_runtime_artifacts_are_not_copied_into_mutation_cases (tests.test_mutation_smoke.MutationSmokeWorkspaceTests.test_local_runtime_artifacts_are_not_copied_into_mutation_cases) ... ok
+test_validation_secret_scan_excludes_ignored_local_runtime_state (tests.test_mutation_smoke.MutationSmokeWorkspaceTests.test_validation_secret_scan_excludes_ignored_local_runtime_state) ... ok
 test_ai_extractor_has_no_tools (tests.test_n8n_contract.N8nContractTests.test_ai_extractor_has_no_tools) ... ok
 test_all_code_nodes_are_javascript_syntax_valid (tests.test_n8n_contract.N8nContractTests.test_all_code_nodes_are_javascript_syntax_valid) ... ok
 test_all_n8n_expression_node_references_exist (tests.test_n8n_contract.N8nContractTests.test_all_n8n_expression_node_references_exist) ... ok
 test_business_entity_and_event_matching_keys_are_locked (tests.test_n8n_contract.N8nContractTests.test_business_entity_and_event_matching_keys_are_locked) ... ok
 test_credentials_are_not_embedded (tests.test_n8n_contract.N8nContractTests.test_credentials_are_not_embedded) ... ok
-test_current_node_versions (tests.test_n8n_contract.N8nContractTests.test_current_node_versions) ... ok
-test_reply_node_is_same_thread_reply_not_new_send (tests.test_n8n_contract.N8nContractTests.test_reply_node_is_same_thread_reply_not_new_send) ... ok
+test_least_privilege_gmail_boundary_polls_only_the_dedicated_label_and_fetches_full_body (tests.test_n8n_contract.N8nContractTests.test_least_privilege_gmail_boundary_polls_only_the_dedicated_label_and_fetches_full_body) ... ok
+test_node_versions_are_supported_by_pinned_n8n_1_117_3_runtime (tests.test_n8n_contract.N8nContractTests.test_node_versions_are_supported_by_pinned_n8n_1_117_3_runtime) ... ok
+test_provider_adapters_keep_ollama_test_mode_and_openai_deployment_mode_isolated (tests.test_n8n_contract.N8nContractTests.test_provider_adapters_keep_ollama_test_mode_and_openai_deployment_mode_isolated) ... ok
+test_provider_adapters_share_exact_contract_and_cannot_bypass_safety (tests.test_n8n_contract.N8nContractTests.test_provider_adapters_share_exact_contract_and_cannot_bypass_safety) ... ok
+test_provider_selection_routes_only_to_the_selected_adapter (tests.test_n8n_contract.N8nContractTests.test_provider_selection_routes_only_to_the_selected_adapter) ... ok
+test_reply_node_is_same_thread_rest_send_not_new_message (tests.test_n8n_contract.N8nContractTests.test_reply_node_is_same_thread_rest_send_not_new_message) ... ok
 test_request_and_event_are_persisted_before_reply_send (tests.test_n8n_contract.N8nContractTests.test_request_and_event_are_persisted_before_reply_send) ... ok
 test_safe_default_and_inactive (tests.test_n8n_contract.N8nContractTests.test_safe_default_and_inactive) ... ok
 test_send_failure_routes_to_human_review_not_blind_retry (tests.test_n8n_contract.N8nContractTests.test_send_failure_routes_to_human_review_not_blind_retry) ... ok
-test_trigger_reads_full_body_and_unread_only (tests.test_n8n_contract.N8nContractTests.test_trigger_reads_full_body_and_unread_only) ... ok
+test_workflow_has_stable_import_identifier (tests.test_n8n_contract.N8nContractTests.test_workflow_has_stable_import_identifier) ... ok
 test_auto_send_gate_depends_on_post_verification_send_now (tests.test_n8n_contract.N8nDefenseInDepthTests.test_auto_send_gate_depends_on_post_verification_send_now) ... ok
 test_extraction_failure_is_bounded_and_fail_closed (tests.test_n8n_contract.N8nDefenseInDepthTests.test_extraction_failure_is_bounded_and_fail_closed) ... ok
 test_human_review_includes_safety_failures_not_only_business_state (tests.test_n8n_contract.N8nDefenseInDepthTests.test_human_review_includes_safety_failures_not_only_business_state) ... ok
@@ -79,6 +84,6 @@ test_first_message_needs_info (tests.test_store_pipeline.PipelineTests.test_firs
 test_followup_updates_same_request (tests.test_store_pipeline.PipelineTests.test_followup_updates_same_request) ... ok
 
 ----------------------------------------------------------------------
-Ran 79 tests in 4.595s
+Ran 84 tests in 0.865s
 
 OK
