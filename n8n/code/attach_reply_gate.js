@@ -1,10 +1,27 @@
 const core=$('Merge + Validate + Decide').item.json;
 const rendered=$('Render Customer Reply').item.json;
-const raw=String(rendered.text ?? rendered.output ?? rendered.response ?? '').trim();
+const raw=String(rendered.body ?? rendered.text ?? rendered.output ?? rendered.response ?? '').trim().replace(/\[Your Company Name\]/gi,'Localle');
 const reply=raw.replace(/^```(?:text)?\s*/i,'').replace(/```$/,'').trim();
-const verdictRaw=$json.output ?? $json;
-const v=(verdictRaw && typeof verdictRaw==='object')?verdictRaw:{};
-const semanticSafe=Boolean(v.safe) && v.language_match!==false && !v.claims_availability && !v.claims_booking_confirmed && !v.quotes_unverified_price && !v.assigns_vehicle && !v.attacks_competitor && !v.exposes_internal && v.asks_only_allowed_fields!==false && v.facts_match_plan!==false;
+
+// Ollama JSON mode is reliable, but n8n's LangChain structured-output parser
+// is not for llama3.1:8b. Parse the raw response here and validate the complete
+// contract. Any transport, parse, schema, or type error is fail-closed.
+const requiredBooleans=['safe','language_match','claims_availability','claims_booking_confirmed','quotes_unverified_price','assigns_vehicle','attacks_competitor','exposes_internal','asks_only_allowed_fields','facts_match_plan'];
+const requiredKeys=[...requiredBooleans,'reason'];
+function parseVerifier(value){
+  if(value && typeof value==='object' && !Array.isArray(value)) return {value,error:''};
+  const text=String(value ?? '').trim().replace(/^```(?:json)?\s*/i,'').replace(/```$/,'').trim();
+  if(!text || text.length>12000) return {value:null,error:'empty_or_oversized_verifier_output'};
+  const start=text.indexOf('{'), end=text.lastIndexOf('}');
+  if(start<0 || end<start) return {value:null,error:'verifier_json_not_found'};
+  try{return {value:JSON.parse(text.slice(start,end+1)),error:''};}
+  catch(_){return {value:null,error:'verifier_json_parse_failed'};}
+}
+const verifierTransportError=String($json.error?.message ?? $json.error ?? '').trim();
+const parsed=parseVerifier($json.body ?? $json.text ?? $json.output ?? $json.response ?? ($json.error ? '' : $json));
+const v=parsed.value;
+const verifierValid=!verifierTransportError && !!v && Object.keys(v).length===requiredKeys.length && requiredKeys.every(k=>Object.prototype.hasOwnProperty.call(v,k)) && requiredBooleans.every(k=>typeof v[k]==='boolean') && typeof v.reason==='string' && v.reason.trim().length>0 && v.reason.length<=500;
+const semanticSafe=verifierValid && v.safe===true && v.language_match===true && v.claims_availability===false && v.claims_booking_confirmed===false && v.quotes_unverified_price===false && v.assigns_vehicle===false && v.attacks_competitor===false && v.exposes_internal===false && v.asks_only_allowed_fields===true && v.facts_match_plan===true;
 const reasons=[];
 if(!reply)reasons.push('empty_reply');
 if(reply.length>2500)reasons.push('reply_too_long');
@@ -15,7 +32,9 @@ if(confirms.some(r=>r.test(reply)))reasons.push('booking_or_availability_claim')
 if(/\b(?:your car is|we have assigned|vehicle assigned|car allocated)\b|(?:το όχημά σας είναι|σας έχει ανατεθεί όχημα)/i.test(reply))reasons.push('vehicle_assignment_claim');
 if(/\b(?:scam|fraud|dishonest|cheat|fake price|rip[- ]?off)\b|(?:απάτη|απατεών|κοροϊδ)/i.test(reply))reasons.push('competitor_attack');
 if(reply.includes('```'))reasons.push('markdown_code_fence');
-if(!semanticSafe)reasons.push('semantic_verifier_rejected');
+if(verifierTransportError)reasons.push('semantic_verifier_error');
+else if(!verifierValid)reasons.push(parsed.error||'semantic_verifier_invalid_schema');
+else if(!semanticSafe)reasons.push('semantic_verifier_rejected');
 const safe=reasons.length===0;
 const holding=core.reply_strategy==='SAFE_HOLDING_REPLY';
 const logicAllows=Boolean(core.auto_send_allowed)||holding;
@@ -29,4 +48,4 @@ const headers=[`To: ${String(core.from||'').replace(/[\r\n]/g,' ')}`,`Subject: $
 if(core.rfc_message_id)headers.push(`In-Reply-To: ${String(core.rfc_message_id).replace(/[\r\n]/g,' ')}`);
 if(refs)headers.push(`References: ${refs.replace(/[\r\n]/g,' ')}`);
 const gmail_raw=Buffer.from(`${headers.join('\r\n')}\r\n\r\n${reply}`,'utf8').toString('base64url');
-return [{json:{...core,reply_body:reply,reply_preview:reply.slice(0,400),reply_safe:safe,reply_safety_reasons:reasons,review_required:reviewRequired,effective_human_review_reason:effectiveReason,effective_next_action:effectiveNext,gmail_raw,send_now:send,delivery_state:send?'PERSISTED_PENDING_SEND':(!safe?'HELD_REPLY_SAFETY':(core.runtime?.auto_send_enabled?'HELD':'DRAFT_ONLY'))}}];
+return [{json:{...core,reply_body:reply,reply_preview:reply.slice(0,400),verifier_error:verifierTransportError||parsed.error||'',verifier_valid:verifierValid,verifier_verdict:verifierValid?v:null,reply_safe:safe,reply_safety_reasons:reasons,review_required:reviewRequired,effective_human_review_reason:effectiveReason,effective_next_action:effectiveNext,gmail_raw,send_now:send,delivery_state:send?'PERSISTED_PENDING_SEND':(!safe?'HELD_REPLY_SAFETY':(core.runtime?.auto_send_enabled?'HELD':'DRAFT_ONLY'))}}];

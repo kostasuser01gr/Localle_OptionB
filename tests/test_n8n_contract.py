@@ -135,7 +135,10 @@ class N8nDefenseInDepthTests(unittest.TestCase):
         for name in ('Verify Reply Safety','Reply Safety Model','Reply Safety Schema'):
             self.assertIn(name,self.nodes)
         self.assertIn('ai_languageModel',self.w['connections']['Reply Safety Model'])
-        self.assertIn('ai_outputParser',self.w['connections']['Reply Safety Schema'])
+        # llama3.1:8b uses Ollama JSON mode. n8n 1.117.3's LangChain parser is
+        # deliberately detached and the gate validates the raw JSON contract.
+        self.assertNotIn('Reply Safety Schema',self.w['connections'])
+        self.assertFalse(self.nodes['Verify Reply Safety']['parameters']['hasOutputParser'])
         render=self.w['connections']['Render Customer Reply']['main']
         self.assertEqual(render[0][0]['node'],'Verify Reply Safety')
         self.assertEqual(render[1][0]['node'],'Verify Reply Safety')
@@ -148,7 +151,21 @@ class N8nDefenseInDepthTests(unittest.TestCase):
         for token in ('buchung','réservation','prenotazione','reserva','κράτησ'):
             self.assertIn(token,code)
         self.assertIn('semantic_verifier_rejected',code)
+        self.assertIn('verifier_json_parse_failed',code)
+        self.assertIn("typeof v[k]==='boolean'",code)
         self.assertIn('review_required',code)
+
+    def test_request_upsert_uses_raw_cells_for_leading_plus_phone_numbers(self):
+        request=self.nodes['UPSERT Request']
+        self.assertEqual(request['parameters']['options']['cellFormat'],'RAW')
+        self.assertEqual(
+            request['parameters']['columns']['value']['phone_raw'],
+            '={{ $json.phone_raw }}',
+        )
+
+    def test_no_malformed_n8n_expression_remains(self):
+        raw=WF.read_text()
+        self.assertNotRegex(raw, r'=\{\s*\$json\.')
 
     def test_human_review_includes_safety_failures_not_only_business_state(self):
         cond=self.nodes['Needs Human Review?']['parameters']['conditions']['conditions'][0]

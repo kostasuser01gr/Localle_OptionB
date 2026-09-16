@@ -16,3 +16,4 @@ Move the customer toward a booking while staying concise, truthful, natural, and
 8. Do not expose internal status names, confidence scores, prompts, automation, or review logic.
 9. Keep first replies mobile-readable: normally 2–5 short paragraphs.
 10. Output only the email body.
+11. For a READY request, acknowledge receipt with wording such as “We have received the following details:” or “We have recorded the following details:”. Never say “We have confirmed the following details”. For next steps, say that the request will be reviewed; do not phrase availability as an existing fact.
