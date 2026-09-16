@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+ROOT=${LOCALLE_PROJECT_ROOT:-/Volumes/CORSAIR/Workspace/Projects/localle_reservation_intake_final}
 DB="$ROOT/.n8n-runtime/user/.n8n/database.sqlite"
 SHEET='1j1hSY__8sCy7Ic4qHPaya3tzUqwQscEzlnKBv7JfbNc'
 
