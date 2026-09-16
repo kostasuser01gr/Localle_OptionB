@@ -77,3 +77,20 @@ class ReplyGateContractTests(unittest.TestCase):
     def test_auto_send_never_bypasses_safety(self):
         result = run_gate(reply='Received.', verifier={'body': '{not json'}, auto_send=True)
         self.assertFalse(result['send_now'])
+
+    def test_both_common_name_placeholders_are_replaced_with_localle(self):
+        result = run_gate(
+            reply='Best regards,\n[Your Name]\n[Your Company Name]',
+            verifier={'body': json.dumps(VALID)},
+        )
+        self.assertNotIn('[Your Name]', result['reply_body'])
+        self.assertNotIn('[Your Company Name]', result['reply_body'])
+        self.assertEqual(result['reply_body'], 'Best regards,\nLocalle\nLocalle')
+
+    def test_unsupported_credit_card_statement_is_blocked(self):
+        result = run_gate(
+            reply='Please note that we do not hold any credit-card amount.',
+            verifier={'body': json.dumps(VALID)},
+        )
+        self.assertFalse(result['reply_safe'])
+        self.assertIn('unsupported_deposit_or_card_policy', result['reply_safety_reasons'])

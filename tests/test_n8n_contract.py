@@ -163,6 +163,15 @@ class N8nDefenseInDepthTests(unittest.TestCase):
             '={{ $json.phone_raw }}',
         )
 
+    def test_renderer_only_receives_approved_facts_and_requires_localle_signature(self):
+        render=self.nodes['Render Customer Reply']['parameters']
+        system=render['messages']['messageValues'][0]['message']
+        self.assertNotIn('No credit-card amount hold',render['text'])
+        self.assertNotIn('Full insurance with no excess',render['text'])
+        self.assertIn('verified_business_facts',system)
+        self.assertIn('Best regards,',system)
+        self.assertIn('Localle',system)
+
     def test_no_malformed_n8n_expression_remains(self):
         raw=WF.read_text()
         self.assertNotRegex(raw, r'=\{\s*\$json\.')

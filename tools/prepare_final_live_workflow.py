@@ -36,6 +36,12 @@ def patch(workflow: dict) -> dict:
     renderer['parameters']['messages']['messageValues'][0]['message'] = (
         ROOT / 'prompts' / 'reply_system.md'
     ).read_text(encoding='utf-8')
+    renderer['parameters']['text'] = (
+        "=Render the customer reply from this approved plan.\n\nReply plan JSON:\n"
+        "{{ JSON.stringify($('Merge + Validate + Decide').item.json.reply_plan) }}"
+        "\n\nOriginal customer language: {{ $('Merge + Validate + Decide').item.json.reply_language }}"
+        "\nOriginal customer message:\n{{ $('Merge + Validate + Decide').item.json.normalized_customer_message }}"
+    )
 
     verifier = nodes['Verify Reply Safety']
     verifier['parameters']['text'] = (

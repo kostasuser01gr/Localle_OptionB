@@ -1,6 +1,6 @@
 const core=$('Merge + Validate + Decide').item.json;
 const rendered=$('Render Customer Reply').item.json;
-const raw=String(rendered.body ?? rendered.text ?? rendered.output ?? rendered.response ?? '').trim().replace(/\[Your Company Name\]/gi,'Localle');
+const raw=String(rendered.body ?? rendered.text ?? rendered.output ?? rendered.response ?? '').trim().replace(/\[(?:Your Company Name|Your Name)\]/gi,'Localle');
 const reply=raw.replace(/^```(?:text)?\s*/i,'').replace(/```$/,'').trim();
 
 // Ollama JSON mode is reliable, but n8n's LangChain structured-output parser
@@ -31,6 +31,17 @@ const confirms=[/\b(?:booking|reservation|availability)\b.{0,30}\b(?:confirmed|g
 if(confirms.some(r=>r.test(reply)))reasons.push('booking_or_availability_claim');
 if(/\b(?:your car is|we have assigned|vehicle assigned|car allocated)\b|(?:το όχημά σας είναι|σας έχει ανατεθεί όχημα)/i.test(reply))reasons.push('vehicle_assignment_claim');
 if(/\b(?:scam|fraud|dishonest|cheat|fake price|rip[- ]?off)\b|(?:απάτη|απατεών|κοροϊδ)/i.test(reply))reasons.push('competitor_attack');
+const verifiedFacts=JSON.stringify(core.reply_plan?.verified_business_facts ?? []).toLowerCase();
+const restrictedTopics=[
+  ['unsupported_deposit_or_card_policy',/\b(?:deposit|credit[- ]?card|card amount|card hold|payment)\b/i],
+  ['unsupported_insurance_policy',/\binsurance\b/i],
+  ['unsupported_fuel_policy',/\bfuel(?:\s+policy)?\b/i],
+  ['unsupported_cancellation_policy',/\bcancell?ation\b/i],
+  ['unsupported_availability_statement',/\bavailability\b/i],
+];
+for(const [reason,pattern] of restrictedTopics){
+  if(pattern.test(reply) && !pattern.test(verifiedFacts)) reasons.push(reason);
+}
 if(reply.includes('```'))reasons.push('markdown_code_fence');
 if(verifierTransportError)reasons.push('semantic_verifier_error');
 else if(!verifierValid)reasons.push(parsed.error||'semantic_verifier_invalid_schema');
