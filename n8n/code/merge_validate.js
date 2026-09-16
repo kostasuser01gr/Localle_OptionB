@@ -1,10 +1,9 @@
 // Deterministic business engine. LLM interprets; this node decides.
-// The provider adapter is deliberately upstream of this deterministic engine.
-// Keep the selected provider as opaque runtime metadata: business decisions must
-// never depend on whether Ollama or OpenAI produced the normalized contract.
-const inbound=$('Apply AI Provider Config').item.json;
+const inbound=$('Apply Runtime Config').item.json;
 const extractedRaw=$json.output ?? $json;
-const incoming=structuredClone(extractedRaw);
+// n8n 1.117.3 Code-node sandboxes do not expose structuredClone. This contract only contains JSON data, so JSON cloning is deterministic here.
+const cloneJson=value=>JSON.parse(JSON.stringify(value));
+const incoming=cloneJson(extractedRaw);
 const existingRow=$('Lookup Request by Thread').item.json || {};
 let existing={};
 try { existing=existingRow.payload_json ? JSON.parse(existingRow.payload_json) : {}; } catch(e){ existing={}; }
@@ -30,7 +29,7 @@ if(pv.status.startsWith('invalid'))incoming.ambiguities.push({code:'invalid_phon
 for(const side of ['pickup','return']){const b=incoming[side]||{};const m=String(b.date_text||'').match(/(?:^|\D)(\d{1,2})[\/.](\d{1,2})(?:\D|$)/);if(!b.date_iso&&m){const a=Number(m[1]),z=Number(m[2]);if(a>=1&&a<=12&&z>=1&&z<=12&&a!==z)incoming.ambiguities.push({code:`ambiguous_${side}_numeric_date`,severity:'medium',detail:`${side} date is numerically ambiguous`});}}
 function ambiguityResolved(code,inc){const codes=new Set((inc.ambiguities||[]).filter(a=>a&&typeof a==='object').map(a=>String(a.code||'')));if(codes.has(code))return false;if(code==='invalid_phone_format')return present(inc.phone)&&!String(inc.phone_status||'').startsWith('invalid');if(code==='ambiguous_pickup_numeric_date')return present(get(inc,'pickup.date_text'))||present(get(inc,'pickup.date_iso'));if(code==='ambiguous_return_numeric_date')return present(get(inc,'return.date_text'))||present(get(inc,'return.date_iso'));if(code==='ambiguous_numeric_date')return present(get(inc,'pickup.date_text'))&&present(get(inc,'return.date_text'));return false;}
 function dedupeAmbiguities(items){const out=[],seen=new Set();for(const a of items){if(!a||typeof a!=='object')continue;const k=String(a.code||'')+'\u0000'+String(a.detail||'');if(seen.has(k))continue;seen.add(k);out.push(a);}return out;}
-let merged=Object.keys(existing).length?structuredClone(existing):structuredClone(incoming);const conflicts=[];
+let merged=Object.keys(existing).length?cloneJson(existing):cloneJson(incoming);const conflicts=[];
 if(Object.keys(existing).length){
   const corrections=[...(existing._applied_corrections||[])];
   const isCorrection=String(incoming.message_intent||'').toLowerCase()==='correction';
@@ -43,8 +42,8 @@ if(Object.keys(existing).length){
   merged.competitor.price_mentioned=Boolean(get(existing,'competitor.price_mentioned'))||Boolean(get(incoming,'competitor.price_mentioned'));
   const oc=Number(existing.confidence||0),nc=Number(incoming.confidence||0); merged.confidence=oc&&nc?Math.min(oc,nc):(nc||oc);
   if(present(incoming.phone)){merged.phone_raw=incoming.phone_raw;merged.phone_normalized=incoming.phone_normalized;merged.phone_status=incoming.phone_status;}else{merged.phone_raw=existing.phone_raw;merged.phone_normalized=existing.phone_normalized;merged.phone_status=existing.phone_status;}
-  const carried=(existing.ambiguities||[]).filter(a=>a&&typeof a==='object'&&!ambiguityResolved(String(a.code||''),incoming)).map(a=>structuredClone(a));
-  const newest=(incoming.ambiguities||[]).filter(a=>a&&typeof a==='object').map(a=>structuredClone(a));
+  const carried=(existing.ambiguities||[]).filter(a=>a&&typeof a==='object'&&!ambiguityResolved(String(a.code||''),incoming)).map(cloneJson);
+  const newest=(incoming.ambiguities||[]).filter(a=>a&&typeof a==='object').map(cloneJson);
   merged.ambiguities=[...carried,...newest];
   for(const p of conflicts)merged.ambiguities.push({code:`conflicting_${p.replaceAll('.','_')}`,severity:'high',detail:`Existing and follow-up values differ for ${p}`});
   merged.ambiguities=dedupeAmbiguities(merged.ambiguities);

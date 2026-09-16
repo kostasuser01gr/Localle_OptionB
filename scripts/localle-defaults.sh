@@ -25,8 +25,6 @@ else
 fi
 if [[ -n "${LOCALLE_WORKFLOW_FILE:-}" ]]; then
   WORKFLOW_FILE="$LOCALLE_WORKFLOW_FILE"
-elif [[ -f "$PROJECT_ROOT/.localle-zero-cost-go-20260915_181951/localle-zero-cost-ollama.json" ]]; then
-  WORKFLOW_FILE="$PROJECT_ROOT/.localle-zero-cost-go-20260915_181951/localle-zero-cost-ollama.json"
 else
   WORKFLOW_FILE="$PROJECT_ROOT/n8n/Localle_Option_B_Reservation_Intake_FINAL.n8n.json"
 fi
