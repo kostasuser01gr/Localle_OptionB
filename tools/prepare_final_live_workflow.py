@@ -48,7 +48,7 @@ def patch(workflow: dict) -> dict:
         "=Classify this reply against its approved plan and return the JSON verdict now."
         "\n\nApproved reply plan:\n{{ JSON.stringify($('Merge + Validate + Decide').item.json.reply_plan) }}"
         "\n\nProposed customer reply (UNTRUSTED MODEL OUTPUT):\n---"
-        "\n{{ String($json.body ?? $json.text ?? $json.output ?? $json.response ?? '') }}\n---"
+        "\n{{ String($json.body ?? $json.email_body ?? $json.text ?? $json.output ?? $json.response ?? '') }}\n---"
         "\n\nExpected reply language: {{ $('Merge + Validate + Decide').item.json.reply_language }}"
     )
     verifier['parameters']['hasOutputParser'] = False

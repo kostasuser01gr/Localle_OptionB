@@ -21,19 +21,19 @@ VALID = {
 }
 
 
-def run_gate(*, reply, verifier, auto_send=False):
+def run_gate(*, reply, verifier, auto_send=False, renderer_key='body'):
     harness = r'''
 const fs=require('fs'), vm=require('vm');
 const input=JSON.parse(fs.readFileSync(0,'utf8'));
 const core={status:'READY',subject:'Reservation enquiry',from:'guest@example.com',reply_strategy:'READY_REPLY',next_action:'review_request',runtime:{auto_send_enabled:input.auto_send}};
-const context={Buffer,$json:input.verifier,$:(name)=>({item:{json:name==='Merge + Validate + Decide'?core:{body:input.reply}}})};
+const context={Buffer,$json:input.verifier,$:(name)=>({item:{json:name==='Merge + Validate + Decide'?core:{[input.renderer_key]:input.reply}}})};
 const source=`(function(){${fs.readFileSync(input.gate,'utf8')}\n})()`;
 process.stdout.write(JSON.stringify(vm.runInNewContext(source,context)));
 '''
     p = subprocess.run(
         ['node', '-e', harness], input=json.dumps({
             'gate': str(GATE), 'reply': reply, 'verifier': verifier,
-            'auto_send': auto_send,
+            'auto_send': auto_send, 'renderer_key': renderer_key,
         }), text=True, capture_output=True, check=True,
     )
     return json.loads(p.stdout)[0]['json']
@@ -51,6 +51,24 @@ class ReplyGateContractTests(unittest.TestCase):
         self.assertFalse(result['review_required'])
         self.assertFalse(result['send_now'])
         self.assertEqual(result['delivery_state'], 'DRAFT_ONLY')
+
+    def test_renderer_email_body_shape_is_supported(self):
+        result = run_gate(
+            reply=(
+                'Dear Test Customer A8,\n\n'
+                'We have received the following details.\n\n'
+                'Best regards,\nLocalle'
+            ),
+            verifier={'body': json.dumps(VALID)},
+            renderer_key='email_body',
+        )
+        self.assertTrue(result['verifier_valid'])
+        self.assertTrue(result['reply_safe'])
+        self.assertEqual(result['reply_safety_reasons'], [])
+        self.assertFalse(result['review_required'])
+        self.assertFalse(result['send_now'])
+        self.assertEqual(result['delivery_state'], 'DRAFT_ONLY')
+        self.assertIn('Localle', result['reply_body'])
 
     def test_malformed_verifier_output_fails_closed(self):
         result = run_gate(reply='Received.', verifier={'body': '{not json'})

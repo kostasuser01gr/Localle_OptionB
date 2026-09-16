@@ -1,6 +1,6 @@
 const core=$('Merge + Validate + Decide').item.json;
 const rendered=$('Render Customer Reply').item.json;
-const raw=String(rendered.body ?? rendered.text ?? rendered.output ?? rendered.response ?? '').trim().replace(/\[(?:Your Company Name|Your Name)\]/gi,'Localle');
+const raw=String(rendered.body ?? rendered.email_body ?? rendered.text ?? rendered.output ?? rendered.response ?? '').trim().replace(/\[(?:Your Company Name|Your Name)\]/gi,'Localle');
 const reply=raw.replace(/^```(?:text)?\s*/i,'').replace(/```$/,'').trim();
 
 // Ollama JSON mode is reliable, but n8n's LangChain structured-output parser

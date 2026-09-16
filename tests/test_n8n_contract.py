@@ -172,6 +172,18 @@ class N8nDefenseInDepthTests(unittest.TestCase):
         self.assertIn('Best regards,',system)
         self.assertIn('Localle',system)
 
+    def test_reply_pipeline_accepts_email_body_output_shape(self):
+        verifier = self.nodes[
+            'Verify Reply Safety'
+        ]['parameters']['text']
+
+        gate = self.nodes[
+            'Attach Reply + Send Gate'
+        ]['parameters']['jsCode']
+
+        self.assertIn('$json.email_body', verifier)
+        self.assertIn('rendered.email_body', gate)
+
     def test_no_malformed_n8n_expression_remains(self):
         raw=WF.read_text()
         self.assertNotRegex(raw, r'=\{\s*\$json\.')
