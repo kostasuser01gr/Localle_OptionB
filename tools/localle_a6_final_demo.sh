@@ -7,7 +7,7 @@ SHEET='1j1hSY__8sCy7Ic4qHPaya3tzUqwQscEzlnKBv7JfbNc'
 
 curl -fsS http://127.0.0.1:5678/healthz >/dev/null
 curl -fsS http://127.0.0.1:11434/api/version >/dev/null
-ollama list | rg -q '^llama3\.1:8b\s'
+ollama list | rg '^llama3\.1:8b\s' >/dev/null
 BASELINE=$(sqlite3 "$DB" "SELECT COALESCE(MAX(id),0) FROM execution_entity WHERE workflowId='LOCALLEOPTB2026A';")
 
 # These URLs only prepare browser tabs. This script never invokes Gmail send.
